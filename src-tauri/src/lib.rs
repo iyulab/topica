@@ -1,8 +1,8 @@
 use std::net::TcpListener;
-use std::sync::Mutex;
+use std::sync::OnceLock;
 use tauri_plugin_shell::ShellExt;
 
-pub struct BackendPort(pub u16);
+static BACKEND_PORT: OnceLock<u16> = OnceLock::new();
 
 pub fn find_free_port() -> u16 {
     TcpListener::bind("127.0.0.1:0")
@@ -12,23 +12,18 @@ pub fn find_free_port() -> u16 {
         .port()
 }
 
-mod commands {
-    use super::BackendPort;
-    use std::sync::Mutex;
-
-    #[tauri::command]
-    pub fn get_backend_port(state: tauri::State<'_, Mutex<BackendPort>>) -> u16 {
-        state.lock().unwrap().0
-    }
+#[tauri::command]
+fn get_backend_port() -> u16 {
+    *BACKEND_PORT.get().expect("Backend port not initialized")
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let port = find_free_port();
+    BACKEND_PORT.set(port).expect("Port already set");
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .manage(Mutex::new(BackendPort(port)))
         .setup(move |app| {
             let sidecar_command = app
                 .shell()
@@ -42,7 +37,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![commands::get_backend_port])
+        .invoke_handler(tauri::generate_handler![get_backend_port])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

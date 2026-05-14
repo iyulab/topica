@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Topica.Api.Modules.RAG;
 using Topica.Core.Entities;
 using Topica.Infrastructure.Data;
 
 namespace Topica.Api.Modules.Research;
 
-public class ResearchService(ApplicationDbContext db, IWebResearcher researcher)
+public class ResearchService(ApplicationDbContext db, IWebResearcher researcher, RagService rag)
 {
     public async Task<List<ResearchDoc>> GetResearchDocsAsync(Guid topicId, CancellationToken ct = default)
         => await db.ResearchDocs
@@ -33,6 +34,8 @@ public class ResearchService(ApplicationDbContext db, IWebResearcher researcher)
         {
             db.ResearchDocs.AddRange(docs);
             await db.SaveChangesAsync(ct);
+
+            await rag.IndexTopicAsync(topicId, docs, db, ct);
         }
     }
 }

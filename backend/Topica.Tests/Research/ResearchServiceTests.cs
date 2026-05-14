@@ -1,4 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
+using Topica.Api.Modules.AI;
+using Topica.Api.Modules.RAG;
 using Topica.Api.Modules.Research;
 using Topica.Core.Entities;
 using Topica.Infrastructure.Data;
@@ -8,6 +12,18 @@ namespace Topica.Tests.Research;
 
 public class ResearchServiceTests
 {
+    private static RagService CreateNullRagService()
+    {
+        var monitor = new StubOptionsMonitor(new AiSettings());
+        return new RagService(monitor, NullLogger<RagService>.Instance);
+    }
+
+    private sealed class StubOptionsMonitor(AiSettings value) : IOptionsMonitor<AiSettings>
+    {
+        public AiSettings CurrentValue => value;
+        public AiSettings Get(string? name) => value;
+        public IDisposable? OnChange(Action<AiSettings, string?> listener) => null;
+    }
     private static ApplicationDbContext CreateContext()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -30,7 +46,7 @@ public class ResearchServiceTests
             new() { Url = "https://example.com/2", Title = "Python Docs", Description = "Official docs" },
         };
 
-        var svc = new ResearchService(db, new FakeResearcher(fakeResults));
+        var svc = new ResearchService(db, new FakeResearcher(fakeResults), CreateNullRagService());
         await svc.RunResearchAsync(topic.Id);
 
         var docs = await db.ResearchDocs.Where(r => r.TopicId == topic.Id).ToListAsync();
@@ -43,7 +59,7 @@ public class ResearchServiceTests
     public async Task RunResearch_TopicNotFound_DoesNothing()
     {
         await using var db = CreateContext();
-        var svc = new ResearchService(db, new FakeResearcher([]));
+        var svc = new ResearchService(db, new FakeResearcher([]), CreateNullRagService());
         await svc.RunResearchAsync(Guid.NewGuid());
         Assert.Equal(0, await db.ResearchDocs.CountAsync());
     }
@@ -60,7 +76,7 @@ public class ResearchServiceTests
         );
         await db.SaveChangesAsync();
 
-        var svc = new ResearchService(db, new FakeResearcher([]));
+        var svc = new ResearchService(db, new FakeResearcher([]), CreateNullRagService());
         var docs = await svc.GetResearchDocsAsync(topic.Id);
 
         Assert.Equal(2, docs.Count);

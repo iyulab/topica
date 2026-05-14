@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using Topica.Api.Modules.AI;
+using Topica.Api.Modules.RAG;
 using Topica.Core.Entities;
 using Topica.Infrastructure.Data;
 using ChatRoleMs = Microsoft.Extensions.AI.ChatRole;
@@ -9,7 +10,7 @@ using AppChatRole = Topica.Core.Enums.ChatRole;
 
 namespace Topica.Api.Modules.Chat;
 
-public class ChatService(ApplicationDbContext db, IChatClient chatClient, IOptionsMonitor<AiSettings> options)
+public class ChatService(ApplicationDbContext db, IChatClient chatClient, IOptionsMonitor<AiSettings> options, RagService rag)
 {
     public async Task<List<ChatSession>> GetHistoryAsync(Guid topicId, CancellationToken ct = default)
         => await db.ChatSessions
@@ -27,7 +28,10 @@ public class ChatService(ApplicationDbContext db, IChatClient chatClient, IOptio
         var history = await GetHistoryAsync(topicId, ct);
 
         var lang = options.CurrentValue.Language;
-        var researchCtx = PromptBuilder.ResearchContext(topic.ResearchDocs.Take(5).ToList(), lang);
+        var ragChunks = await rag.SearchAsync(topicId, userMessage, db, top: 5, ct);
+        var researchCtx = ragChunks.Count > 0
+            ? PromptBuilder.RagContext(ragChunks, lang)
+            : PromptBuilder.ResearchContext(topic.ResearchDocs.Take(5).ToList(), lang);
         var systemPrompt = PromptBuilder.ChatSystem(topic, researchCtx, lang);
 
         var messages = new List<ChatMessage> { new(ChatRoleMs.System, systemPrompt) };

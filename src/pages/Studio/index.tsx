@@ -8,6 +8,7 @@ import MarkdownRenderer from "../../components/MarkdownRenderer";
 import FlashcardViewer from "../../components/FlashcardViewer";
 import QuizViewer from "../../components/QuizViewer";
 import ChatPanel from "../../components/ChatPanel";
+import SurveyModal from "../../components/SurveyModal";
 
 export default function Studio() {
   const { topicId } = useParams<{ topicId: string }>();
@@ -18,6 +19,7 @@ export default function Studio() {
   const [activeTab, setActiveTab] = useState(0);
   const contentsRef = useRef(contents);
   contentsRef.current = contents;
+  const [showSurvey, setShowSurvey] = useState(false);
   const { activeItems } = useQueueStore();
   const topicActiveItems = activeItems.filter((i) => i.topicId === topicId);
 
@@ -80,7 +82,21 @@ export default function Studio() {
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
         <h2 style={{ margin: 0, color: "#222" }}>{topic.title}</h2>
         <LevelBadge level={topic.userLevel} />
+        <button
+          onClick={() => setShowSurvey(true)}
+          style={{
+            marginLeft: "auto", padding: "4px 12px", border: "1px solid #6c63ff",
+            borderRadius: 6, background: "none", color: "#6c63ff",
+            cursor: "pointer", fontSize: 12,
+          }}
+        >
+          🎯 학습 목표 설문
+        </button>
       </div>
+
+      {showSurvey && topicId && (
+        <SurveyModal topicId={topicId} onClose={() => setShowSurvey(false)} />
+      )}
       {topic.description && (
         <p style={{ margin: "0 0 16px", fontSize: 13, color: "#888" }}>{topic.description}</p>
       )}

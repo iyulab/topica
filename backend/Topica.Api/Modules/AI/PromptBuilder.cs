@@ -12,6 +12,14 @@ public static class PromptBuilder
         return string.Join("\n---\n", docs.Select(r => $"[{r.Source}]\n{r.Content}"));
     }
 
+    public static string RagContext(IReadOnlyList<string> chunks, string language)
+    {
+        if (chunks.Count == 0)
+            return language == "en" ? "No relevant context found." : "관련 컨텍스트 없음";
+
+        return string.Join("\n---\n", chunks.Select((c, i) => $"[Chunk {i + 1}]\n{c}"));
+    }
+
     public static string Summary(Topic topic, string researchContext, int level, string language) => language == "en"
         ? $"""
             You are an educational content writer. Write a structured markdown summary for the topic below.
@@ -193,6 +201,16 @@ public static class PromptBuilder
             - 3~5 뎁스, 핵심 개념과 세부 사항 포함
             - 마크다운만 응답 (다른 설명 불필요)
             """;
+
+    public static string SurveySystem(Topic topic) =>
+        $"""
+        You are a learning assistant helping understand a learner's goals for the topic "{topic.Title}".
+        Ask up to 5 short, focused questions (one per line, ending with '?') to understand:
+        - Their current knowledge level
+        - What they want to learn
+        - Any specific aspects they care about
+        Keep each question concise (1 sentence). Ask them in order, one per line.
+        """;
 
     public static string ChatSystem(Topic topic, string researchContext, string language) => language == "en"
         ? $"""

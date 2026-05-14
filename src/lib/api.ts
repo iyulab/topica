@@ -122,3 +122,40 @@ export async function sendChatMessage(topicId: string, message: string): Promise
 export async function clearChatHistory(topicId: string): Promise<void> {
   return apiDelete(`/topics/${topicId}/chat`);
 }
+
+// --- Survey API ---
+
+export async function* surveyStream(topicId: string, signal?: AbortSignal): AsyncGenerator<string> {
+  const url = await getBaseUrl();
+  const res = await fetch(`${url}/topics/${topicId}/survey`, { signal });
+  if (!res.ok || !res.body) throw new Error("Survey stream failed");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      const data = line.replace(/^data: /, "").trim();
+      if (!data) continue;
+      try {
+        const parsed = JSON.parse(data) as { question?: string; done?: boolean };
+        if (parsed.done) return;
+        if (parsed.question) yield parsed.question;
+      } catch {
+        // ignore malformed
+      }
+    }
+  }
+}
+
+export async function saveSurveyAnswers(topicId: string, answers: string[]): Promise<void> {
+  await apiPost(`/topics/${topicId}/survey/answers`, { answers });
+}

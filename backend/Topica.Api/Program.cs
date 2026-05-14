@@ -5,8 +5,10 @@ using Topica.Api.Modules.AI;
 using Topica.Api.Modules.Chat;
 using Topica.Api.Modules.Contents;
 using Topica.Api.Modules.Queue;
+using Topica.Api.Modules.RAG;
 using Topica.Api.Modules.Research;
 using Topica.Api.Modules.Settings;
+using Topica.Api.Modules.Survey;
 using Topica.Api.Modules.Topics;
 using Topica.Api.Modules.WS;
 using Topica.Infrastructure.Data;
@@ -32,8 +34,10 @@ builder.Services.AddDbContext<ApplicationDbContext>(opt =>
 builder.Services.AddTopicModule();
 builder.Services.AddResearchModule();
 builder.Services.AddAiModule(builder.Configuration);
+builder.Services.AddRagModule();
 builder.Services.AddContentModule();
 builder.Services.AddChatModule();
+builder.Services.AddSurveyModule();
 
 builder.Services.AddSingleton<WsHub>();
 builder.Services.AddSingleton<ContentQueueService>();
@@ -58,6 +62,7 @@ app.MapResearchEndpoints();
 app.MapContentEndpoints();
 app.MapChatEndpoints();
 app.MapSettingsEndpoints();
+app.MapSurveyEndpoints();
 
 app.Map("/ws", async (HttpContext context, WsHub hub) =>
 {

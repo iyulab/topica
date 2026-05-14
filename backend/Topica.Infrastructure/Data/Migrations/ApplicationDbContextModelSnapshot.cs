@@ -210,6 +210,40 @@ namespace Topica.Infrastructure.Data.Migrations
                     b.ToTable("ResearchDocs");
                 });
 
+            modelBuilder.Entity("Topica.Core.Entities.ResearchChunkEmbedding", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ChunkText")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("ChunkIndex")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Model")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("TopicId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("Vector")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TopicId");
+
+                    b.ToTable("ResearchChunkEmbeddings");
+                });
+
             modelBuilder.Entity("Topica.Core.Entities.Topic", b =>
                 {
                     b.Property<Guid>("Id")
@@ -342,6 +376,17 @@ namespace Topica.Infrastructure.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Content");
+
+                    b.Navigation("Topic");
+                });
+
+            modelBuilder.Entity("Topica.Core.Entities.ResearchChunkEmbedding", b =>
+                {
+                    b.HasOne("Topica.Core.Entities.Topic", "Topic")
+                        .WithMany()
+                        .HasForeignKey("TopicId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Topic");
                 });

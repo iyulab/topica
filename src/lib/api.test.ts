@@ -11,7 +11,7 @@ describe("api.ts", () => {
   });
 
   it("checkHealth returns true when backend returns ok", async () => {
-    global.fetch = vi.fn().mockResolvedValueOnce({
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => ({ status: "ok" }),
     });
@@ -22,7 +22,7 @@ describe("api.ts", () => {
   });
 
   it("checkHealth returns false on network error", async () => {
-    global.fetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
+    globalThis.fetch = vi.fn().mockRejectedValueOnce(new Error("Network error"));
 
     const { checkHealth } = await import("./api");
     const result = await checkHealth();

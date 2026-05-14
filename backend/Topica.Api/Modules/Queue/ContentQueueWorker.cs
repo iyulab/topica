@@ -36,6 +36,14 @@ public class ContentQueueWorker(
 
             var content = await contentService.GenerateAsync(req.TopicId, req.Type, req.Level, ct);
 
+            await wsHub.BroadcastAsync(new
+            {
+                type = "content_ready",
+                topicId = req.TopicId,
+                contentId = content.Id,
+                contentType = req.Type.ToString(),
+            }, ct);
+
             if (req.Type == ContentType.Summary && !string.IsNullOrWhiteSpace(content.Body))
             {
                 var tagService = scope.ServiceProvider.GetRequiredService<TagService>();
@@ -44,14 +52,6 @@ public class ContentQueueWorker(
                 var embedSvc = scope.ServiceProvider.GetRequiredService<TopicEmbeddingService>();
                 await embedSvc.EmbedTopicAsync(req.TopicId, ct);
             }
-
-            await wsHub.BroadcastAsync(new
-            {
-                type = "content_ready",
-                topicId = req.TopicId,
-                contentId = content.Id,
-                contentType = req.Type.ToString(),
-            }, ct);
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex)

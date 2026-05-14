@@ -13,9 +13,10 @@ interface Props {
   body: string;
   topicId?: string;
   contentId?: string;
+  onLevelChange?: (newLevel: number) => void;
 }
 
-export default function QuizViewer({ body, topicId, contentId }: Props) {
+export default function QuizViewer({ body, topicId, contentId, onLevelChange }: Props) {
   const [selected, setSelected] = useState<Map<number, number>>(new Map());
   const [current, setCurrent] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -40,6 +41,7 @@ export default function QuizViewer({ body, topicId, contentId }: Props) {
       const result = await submitEval(topicId, contentId, score, questions.length);
       setEvalResult(result);
       setSubmitted(true);
+      if (result.levelChanged) onLevelChange?.(result.newLevel);
     } catch {
       // silently ignore
     }

@@ -42,12 +42,17 @@ export default function Studio() {
       .finally(() => setLoading(false));
   }, [topicId]);
 
-  // Refresh contents on WS content_ready for this topic
+  // Refresh on WS content_ready for this topic
   useEffect(() => {
     if (!topicId) return;
     const off = topicaWs.on((msg: WsMessage) => {
       if (msg.type === "content_ready" && msg.topicId === topicId) {
         getContents(topicId).then(setContents);
+        // If Summary ready, tags/related may now exist
+        if ((msg.contentType as string) === "Summary") {
+          getTags(topicId).then(setTags).catch(() => {});
+          getRelatedTopics(topicId).then(setRelatedTopics).catch(() => {});
+        }
       }
     });
     return off;
@@ -162,6 +167,7 @@ export default function Studio() {
               body={tabs[activeTab].content!.body}
               topicId={topicId}
               contentId={tabs[activeTab].content!.id}
+              onLevelChange={(newLevel) => setTopic((t) => t ? { ...t, userLevel: newLevel } : t)}
             />
           )}
           {tabs[activeTab].renderer === "markdown" && (

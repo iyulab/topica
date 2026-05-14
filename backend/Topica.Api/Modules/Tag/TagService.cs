@@ -7,7 +7,7 @@ using Topica.Infrastructure.Data;
 
 namespace Topica.Api.Modules.Tag;
 
-public class TagService(ApplicationDbContext db, IChatClient chatClient)
+public class TagService(ApplicationDbContext db, IChatClient chatClient, ILogger<TagService> logger)
 {
     public async Task<List<string>> GetTagsAsync(Guid topicId, CancellationToken ct = default)
         => await db.TopicTags
@@ -42,7 +42,11 @@ public class TagService(ApplicationDbContext db, IChatClient chatClient)
             catch { }
         }
 
-        if (tags is null || tags.Count == 0) return;
+        if (tags is null || tags.Count == 0)
+        {
+            logger.LogWarning("Tag extraction returned no parseable JSON for topic {TopicId}. Response: {Text}", topicId, text[..Math.Min(200, text.Length)]);
+            return;
+        }
 
         var existing = await db.TopicTags.Where(t => t.TopicId == topicId).ToListAsync(ct);
         db.TopicTags.RemoveRange(existing);

@@ -18,7 +18,7 @@ public class ContentService(ApplicationDbContext db, IEnumerable<IContentGenerat
         => await db.Contents
             .FirstOrDefaultAsync(c => c.TopicId == topicId && c.Id == contentId, ct);
 
-    public async Task<Content> GenerateAsync(Guid topicId, ContentType type, int level = 1, CancellationToken ct = default)
+    public async Task<(Content content, bool isNew)> GenerateAsync(Guid topicId, ContentType type, int level = 1, CancellationToken ct = default)
     {
         var topic = await db.Topics
             .Include(t => t.ResearchDocs)
@@ -28,9 +28,22 @@ public class ContentService(ApplicationDbContext db, IEnumerable<IContentGenerat
         var generator = generators.FirstOrDefault(g => g.Type == type)
             ?? throw new NotSupportedException($"No generator registered for ContentType.{type}");
 
-        var content = await generator.GenerateAsync(topic, topic.ResearchDocs.ToList(), level, ct);
-        db.Contents.Add(content);
+        var generated = await generator.GenerateAsync(topic, topic.ResearchDocs.ToList(), level, ct);
+
+        // Upsert: replace existing content of the same type so regeneration doesn't create duplicates.
+        var existing = await db.Contents.FirstOrDefaultAsync(c => c.TopicId == topicId && c.Type == type, ct);
+        if (existing is not null)
+        {
+            existing.Body = generated.Body;
+            existing.Level = generated.Level;
+            existing.Status = generated.Status;
+            existing.GeneratedAt = generated.GeneratedAt;
+            await db.SaveChangesAsync(ct);
+            return (existing, isNew: false);
+        }
+
+        db.Contents.Add(generated);
         await db.SaveChangesAsync(ct);
-        return content;
+        return (generated, isNew: true);
     }
 }

@@ -38,8 +38,10 @@ public static class ContentEndpoints
         {
             try
             {
-                var content = await svc.GenerateAsync(topicId, req.Type, req.Level, ct);
-                return Results.Created($"/topics/{topicId}/contents/{content.Id}", content);
+                var (content, isNew) = await svc.GenerateAsync(topicId, req.Type, req.Level, ct);
+                return isNew
+                    ? Results.Created($"/topics/{topicId}/contents/{content.Id}", content)
+                    : Results.Ok(content);
             }
             catch (KeyNotFoundException)
             {

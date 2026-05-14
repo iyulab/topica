@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getContents, getLevelRecommendation, getRelatedTopics, getTags, getTopics, type Content, type LevelRecommendation, type RelatedTopic, type Topic } from "../../lib/api";
+import { generateContent, getContents, getLevelRecommendation, getRelatedTopics, getTags, getTopics, type Content, type LevelRecommendation, type RelatedTopic, type Topic } from "../../lib/api";
 import { topicaWs, type WsMessage } from "../../lib/ws";
 import { useQueueStore } from "../../lib/store";
 import LevelBadge from "../../components/LevelBadge";
@@ -20,6 +20,7 @@ export default function Studio() {
   const contentsRef = useRef(contents);
   contentsRef.current = contents;
   const [showSurvey, setShowSurvey] = useState(false);
+  const [regenerating, setRegenerating] = useState<number | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [relatedTopics, setRelatedTopics] = useState<RelatedTopic[]>([]);
   const [recommendation, setRecommendation] = useState<LevelRecommendation | null>(null);
@@ -136,7 +137,7 @@ export default function Studio() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "1px solid #ddd" }}>
+      <div style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "1px solid #ddd", alignItems: "flex-end" }}>
         {tabs.map((tab, i) => (
           <button
             key={i}
@@ -156,6 +157,35 @@ export default function Studio() {
             {tab.renderer === "chat" ? "💬" : tab.isGenerating ? "⏳" : tab.content ? "✓" : "—"}
           </button>
         ))}
+        {tabs[activeTab].renderer !== "chat" && topicId && (
+          <button
+            onClick={async () => {
+              setRegenerating(activeTab);
+              try {
+                const updated = await generateContent(topicId, activeTab, topic!.userLevel);
+                setContents((cs) => {
+                  const filtered = cs.filter((c) => c.type !== activeTab);
+                  return [...filtered, updated];
+                });
+              } finally {
+                setRegenerating(null);
+              }
+            }}
+            disabled={regenerating === activeTab || tabs[activeTab].isGenerating}
+            style={{
+              marginLeft: "auto",
+              padding: "4px 10px",
+              border: "1px solid #ddd",
+              borderRadius: 6,
+              background: "none",
+              color: "#888",
+              cursor: regenerating === activeTab ? "not-allowed" : "pointer",
+              fontSize: 12,
+            }}
+          >
+            {regenerating === activeTab ? "⏳" : "🔄"} 재생성
+          </button>
+        )}
       </div>
 
       {/* Content area */}

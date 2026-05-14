@@ -71,7 +71,7 @@ public class ContentQueueWorker(
             await MarkProcessingAsync(db, req, ct);
 
             var contentService = scope.ServiceProvider.GetRequiredService<ContentService>();
-            var content = await contentService.GenerateAsync(req.TopicId, req.Type, req.Level, ct);
+            var (content, _) = await contentService.GenerateAsync(req.TopicId, req.Type, req.Level, ct);
 
             await wsHub.BroadcastAsync(new
             {

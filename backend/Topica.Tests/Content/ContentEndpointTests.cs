@@ -39,6 +39,35 @@ public class ContentEndpointTests(TestWebAppFactory factory)
     }
 
     [Fact]
+    public async Task Regenerate_Summary_UpsertsPreviousContent()
+    {
+        var client = factory.CreateClient();
+        var topicRes = await client.PostAsJsonAsync("/topics", new { Title = "Regen_Upsert", UserLevel = 3 });
+        var topic = await topicRes.Content.ReadFromJsonAsync<TopicDto>();
+        Assert.NotNull(topic);
+
+        var gen1 = await (await client.PostAsJsonAsync(
+            $"/topics/{topic.Id}/contents/generate",
+            new { Type = (int)ContentType.Summary, Level = 3 }))
+            .Content.ReadFromJsonAsync<ContentDto>();
+        Assert.NotNull(gen1);
+
+        var gen2 = await (await client.PostAsJsonAsync(
+            $"/topics/{topic.Id}/contents/generate",
+            new { Type = (int)ContentType.Summary, Level = 7 }))
+            .Content.ReadFromJsonAsync<ContentDto>();
+        Assert.NotNull(gen2);
+
+        Assert.Equal(gen1.Id, gen2.Id); // same record — upserted, not duplicated
+        Assert.Equal(7, gen2.Level);    // level updated
+
+        var contents = await (await client.GetAsync($"/topics/{topic.Id}/contents"))
+            .Content.ReadFromJsonAsync<List<ContentDto>>();
+        Assert.NotNull(contents);
+        Assert.Single(contents, c => c.Type == (int)ContentType.Summary);
+    }
+
+    [Fact]
     public async Task Get_Contents_ReturnsEmptyForNewTopic()
     {
         var client = factory.CreateClient();

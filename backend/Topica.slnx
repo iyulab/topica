@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Topica.Api/Topica.Api.csproj" />
+  <Project Path="Topica.Core/Topica.Core.csproj" />
+  <Project Path="Topica.Infrastructure/Topica.Infrastructure.csproj" />
+  <Project Path="Topica.Tests/Topica.Tests.csproj" />
+</Solution>

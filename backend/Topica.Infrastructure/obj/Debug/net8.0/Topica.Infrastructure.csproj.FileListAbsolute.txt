@@ -1,0 +1,16 @@
+D:\data\topica\backend\Topica.Infrastructure\bin\Debug\net8.0\Topica.Infrastructure.deps.json
+D:\data\topica\backend\Topica.Infrastructure\bin\Debug\net8.0\Topica.Infrastructure.dll
+D:\data\topica\backend\Topica.Infrastructure\bin\Debug\net8.0\Topica.Infrastructure.pdb
+D:\data\topica\backend\Topica.Infrastructure\bin\Debug\net8.0\Topica.Core.dll
+D:\data\topica\backend\Topica.Infrastructure\bin\Debug\net8.0\Topica.Core.pdb
+D:\data\topica\backend\Topica.Infrastructure\obj\Debug\net8.0\Topica.Infrastructure.csproj.AssemblyReference.cache
+D:\data\topica\backend\Topica.Infrastructure\obj\Debug\net8.0\Topica.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+D:\data\topica\backend\Topica.Infrastructure\obj\Debug\net8.0\Topica.Infrastructure.AssemblyInfoInputs.cache
+D:\data\topica\backend\Topica.Infrastructure\obj\Debug\net8.0\Topica.Infrastructure.AssemblyInfo.cs
+D:\data\topica\backend\Topica.Infrastructure\obj\Debug\net8.0\Topica.Infrastructure.csproj.CoreCompileInputs.cache
+D:\data\topica\backend\Topica.Infrastructure\obj\Debug\net8.0\Topica.Infrastructure.sourcelink.json
+D:\data\topica\backend\Topica.Infrastructure\obj\Debug\net8.0\Topica.I.3F958DAA.Up2Date
+D:\data\topica\backend\Topica.Infrastructure\obj\Debug\net8.0\Topica.Infrastructure.dll
+D:\data\topica\backend\Topica.Infrastructure\obj\Debug\net8.0\refint\Topica.Infrastructure.dll
+D:\data\topica\backend\Topica.Infrastructure\obj\Debug\net8.0\Topica.Infrastructure.pdb
+D:\data\topica\backend\Topica.Infrastructure\obj\Debug\net8.0\ref\Topica.Infrastructure.dll

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { extractJson } from "../lib/jsonUtils";
+import { submitEval } from "../lib/api";
 
 interface Question {
   question: string;
@@ -10,11 +11,15 @@ interface Question {
 
 interface Props {
   body: string;
+  topicId?: string;
+  contentId?: string;
 }
 
-export default function QuizViewer({ body }: Props) {
+export default function QuizViewer({ body, topicId, contentId }: Props) {
   const [selected, setSelected] = useState<Map<number, number>>(new Map());
   const [current, setCurrent] = useState(0);
+  const [submitted, setSubmitted] = useState(false);
+  const [evalResult, setEvalResult] = useState<{ newLevel: number; levelChanged: boolean } | null>(null);
 
   const questions = extractJson<Question[]>(body) ?? [];
   if (questions.length === 0 && body.trim()) {
@@ -26,8 +31,19 @@ export default function QuizViewer({ body }: Props) {
   const q = questions[current];
   const chosen = selected.get(current);
   const answered = chosen !== undefined;
-
   const score = [...selected.entries()].filter(([i, v]) => questions[i]?.answer === v).length;
+  const allAnswered = selected.size === questions.length;
+
+  const handleSubmit = async () => {
+    if (!topicId || !contentId || submitted) return;
+    try {
+      const result = await submitEval(topicId, contentId, score, questions.length);
+      setEvalResult(result);
+      setSubmitted(true);
+    } catch {
+      // silently ignore
+    }
+  };
 
   return (
     <div>
@@ -35,6 +51,20 @@ export default function QuizViewer({ body }: Props) {
         <span>문제 {current + 1} / {questions.length}</span>
         <span>점수: {score}/{questions.length}</span>
       </div>
+
+      {evalResult && (
+        <div style={{
+          marginBottom: 16, padding: "10px 16px",
+          background: evalResult.levelChanged ? "#e8f5e9" : "#f5f5f5",
+          border: `1px solid ${evalResult.levelChanged ? "#4caf50" : "#ddd"}`,
+          borderRadius: 8, fontSize: 13,
+          color: evalResult.levelChanged ? "#2e7d32" : "#666",
+        }}>
+          {evalResult.levelChanged
+            ? `🎯 레벨이 ${evalResult.newLevel}로 조정되었습니다`
+            : `현재 레벨 유지 (Lv. ${evalResult.newLevel})`}
+        </div>
+      )}
 
       <div style={{ background: "#f8f8ff", borderRadius: 8, padding: "20px 24px", marginBottom: 16 }}>
         <p style={{ fontSize: 15, fontWeight: 600, color: "#222", margin: "0 0 16px" }}>{q.question}</p>
@@ -56,16 +86,9 @@ export default function QuizViewer({ body }: Props) {
                 key={i}
                 onClick={() => !answered && setSelected((m) => new Map(m).set(current, i))}
                 style={{
-                  background: bg,
-                  border,
-                  borderRadius: 6,
-                  padding: "10px 14px",
-                  cursor: answered ? "default" : "pointer",
-                  fontSize: 14,
-                  color,
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
+                  background: bg, border, borderRadius: 6, padding: "10px 14px",
+                  cursor: answered ? "default" : "pointer", fontSize: 14, color,
+                  display: "flex", alignItems: "center", gap: 10,
                 }}
               >
                 <span style={{ fontWeight: 600, minWidth: 20 }}>{String.fromCharCode(65 + i)}.</span>
@@ -82,19 +105,24 @@ export default function QuizViewer({ body }: Props) {
         )}
       </div>
 
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <button
-          onClick={() => setCurrent((c) => Math.max(0, c - 1))}
-          disabled={current === 0}
-          style={navBtnStyle(current === 0)}
-        >
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <button onClick={() => setCurrent((c) => Math.max(0, c - 1))} disabled={current === 0} style={navBtnStyle(current === 0)}>
           ← 이전
         </button>
-        <button
-          onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))}
-          disabled={current === questions.length - 1}
-          style={navBtnStyle(current === questions.length - 1)}
-        >
+
+        {allAnswered && topicId && contentId && !submitted && (
+          <button
+            onClick={handleSubmit}
+            style={{
+              padding: "8px 20px", background: "#6c63ff", color: "#fff",
+              border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600,
+            }}
+          >
+            결과 제출
+          </button>
+        )}
+
+        <button onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))} disabled={current === questions.length - 1} style={navBtnStyle(current === questions.length - 1)}>
           다음 →
         </button>
       </div>
@@ -104,12 +132,9 @@ export default function QuizViewer({ body }: Props) {
 
 function navBtnStyle(disabled: boolean): React.CSSProperties {
   return {
-    padding: "8px 16px",
-    border: "1px solid #ddd",
-    borderRadius: 6,
+    padding: "8px 16px", border: "1px solid #ddd", borderRadius: 6,
     background: disabled ? "#f5f5f5" : "#fff",
     color: disabled ? "#ccc" : "#333",
-    cursor: disabled ? "not-allowed" : "pointer",
-    fontSize: 13,
+    cursor: disabled ? "not-allowed" : "pointer", fontSize: 13,
   };
 }

@@ -202,6 +202,14 @@ public static class PromptBuilder
             - 마크다운만 응답 (다른 설명 불필요)
             """;
 
+    public static string TagSystem() =>
+        """
+        Extract 3-8 concise topic tags from the given content.
+        Return ONLY a JSON array of strings, nothing else.
+        Example: ["machine learning", "neural network", "deep learning"]
+        Tags should be lowercase, 1-3 words each.
+        """;
+
     public static string SurveySystem(Topic topic) =>
         $"""
         You are a learning assistant helping understand a learner's goals for the topic "{topic.Title}".

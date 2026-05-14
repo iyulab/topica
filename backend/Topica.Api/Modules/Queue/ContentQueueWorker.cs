@@ -1,4 +1,6 @@
 using Topica.Api.Modules.Contents;
+using Topica.Api.Modules.Graph;
+using Topica.Api.Modules.Tag;
 using Topica.Api.Modules.WS;
 using Topica.Core.Enums;
 
@@ -33,6 +35,15 @@ public class ContentQueueWorker(
             var contentService = scope.ServiceProvider.GetRequiredService<ContentService>();
 
             var content = await contentService.GenerateAsync(req.TopicId, req.Type, req.Level, ct);
+
+            if (req.Type == ContentType.Summary && !string.IsNullOrWhiteSpace(content.Body))
+            {
+                var tagService = scope.ServiceProvider.GetRequiredService<TagService>();
+                await tagService.GenerateTagsAsync(req.TopicId, content.Body, ct);
+
+                var embedSvc = scope.ServiceProvider.GetRequiredService<TopicEmbeddingService>();
+                await embedSvc.EmbedTopicAsync(req.TopicId, ct);
+            }
 
             await wsHub.BroadcastAsync(new
             {

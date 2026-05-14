@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getContents, getTopics, type Content, type Topic } from "../../lib/api";
+import { getContents, getRelatedTopics, getTags, getTopics, type Content, type RelatedTopic, type Topic } from "../../lib/api";
 import { topicaWs, type WsMessage } from "../../lib/ws";
 import { useQueueStore } from "../../lib/store";
 import LevelBadge from "../../components/LevelBadge";
@@ -20,6 +20,8 @@ export default function Studio() {
   const contentsRef = useRef(contents);
   contentsRef.current = contents;
   const [showSurvey, setShowSurvey] = useState(false);
+  const [tags, setTags] = useState<string[]>([]);
+  const [relatedTopics, setRelatedTopics] = useState<RelatedTopic[]>([]);
   const { activeItems } = useQueueStore();
   const topicActiveItems = activeItems.filter((i) => i.topicId === topicId);
 
@@ -28,10 +30,14 @@ export default function Studio() {
     Promise.all([
       getTopics().then((ts) => ts.find((t) => t.id === topicId) ?? null),
       getContents(topicId),
+      getTags(topicId).catch(() => [] as string[]),
+      getRelatedTopics(topicId).catch(() => [] as RelatedTopic[]),
     ])
-      .then(([t, cs]) => {
+      .then(([t, cs, tgs, rel]) => {
         setTopic(t);
         setContents(cs);
+        setTags(tgs);
+        setRelatedTopics(rel);
       })
       .finally(() => setLoading(false));
   }, [topicId]);
@@ -98,7 +104,19 @@ export default function Studio() {
         <SurveyModal topicId={topicId} onClose={() => setShowSurvey(false)} />
       )}
       {topic.description && (
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#888" }}>{topic.description}</p>
+        <p style={{ margin: "0 0 8px", fontSize: 13, color: "#888" }}>{topic.description}</p>
+      )}
+      {tags.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
+          {tags.map((tag) => (
+            <span key={tag} style={{
+              padding: "2px 10px", background: "#f0eeff", border: "1px solid #d0c8ff",
+              borderRadius: 12, fontSize: 12, color: "#6c63ff",
+            }}>
+              {tag}
+            </span>
+          ))}
+        </div>
       )}
 
       {/* Tabs */}
@@ -140,7 +158,11 @@ export default function Studio() {
             <FlashcardViewer body={tabs[activeTab].content!.body} />
           )}
           {tabs[activeTab].renderer === "quiz" && (
-            <QuizViewer body={tabs[activeTab].content!.body} />
+            <QuizViewer
+              body={tabs[activeTab].content!.body}
+              topicId={topicId}
+              contentId={tabs[activeTab].content!.id}
+            />
           )}
           {tabs[activeTab].renderer === "markdown" && (
             <MarkdownRenderer content={tabs[activeTab].content!.body} />
@@ -159,6 +181,28 @@ export default function Studio() {
           {tabs[activeTab].isGenerating
             ? "⏳ 생성 중... (완료 시 자동 업데이트됩니다)"
             : "아직 생성되지 않았습니다."}
+        </div>
+      )}
+
+      {relatedTopics.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <h4 style={{ margin: "0 0 12px", fontSize: 13, color: "#888", fontWeight: 600 }}>관련 토픽</h4>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {relatedTopics.map((rel) => (
+              <button
+                key={rel.id}
+                onClick={() => navigate(`/topics/${rel.id}/studio`)}
+                style={{
+                  padding: "6px 14px", background: "#fff", border: "1px solid #ddd",
+                  borderRadius: 20, cursor: "pointer", fontSize: 13, color: "#333",
+                  display: "flex", alignItems: "center", gap: 6,
+                }}
+              >
+                {rel.topic.title}
+                <span style={{ fontSize: 11, color: "#aaa" }}>{Math.round(rel.score * 100)}%</span>
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

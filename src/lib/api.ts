@@ -159,3 +159,37 @@ export async function* surveyStream(topicId: string, signal?: AbortSignal): Asyn
 export async function saveSurveyAnswers(topicId: string, answers: string[]): Promise<void> {
   await apiPost(`/topics/${topicId}/survey/answers`, { answers });
 }
+
+// --- Eval API ---
+
+export interface EvalResult {
+  newLevel: number;
+  levelChanged: boolean;
+}
+
+export async function submitEval(
+  topicId: string,
+  contentId: string,
+  score: number,
+  total: number
+): Promise<EvalResult> {
+  return apiPost<EvalResult>(`/topics/${topicId}/eval`, { contentId, score, total });
+}
+
+// --- Tag API ---
+
+export async function getTags(topicId: string): Promise<string[]> {
+  return apiGet<string[]>(`/topics/${topicId}/tags`);
+}
+
+// --- Graph API ---
+
+export interface RelatedTopic {
+  id: string;
+  score: number;
+  topic: Topic;
+}
+
+export async function getRelatedTopics(topicId: string): Promise<RelatedTopic[]> {
+  return apiGet<RelatedTopic[]>(`/topics/${topicId}/related`);
+}

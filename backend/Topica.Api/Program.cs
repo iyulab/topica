@@ -1,9 +1,18 @@
 using Microsoft.EntityFrameworkCore;
 using System.Net.WebSockets;
 using System.Text.Json;
+using Topica.Api.Modules.AI;
+using Topica.Api.Modules.Contents;
+using Topica.Api.Modules.Queue;
+using Topica.Api.Modules.Research;
+using Topica.Api.Modules.Topics;
+using Topica.Api.Modules.WS;
 using Topica.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.ConfigureHttpJsonOptions(opts =>
+    opts.SerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles);
 
 var port = Environment.GetEnvironmentVariable("TOPICA_PORT") ?? "5174";
 builder.WebHost.UseUrls($"http://127.0.0.1:{port}");
@@ -16,6 +25,15 @@ Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
 builder.Services.AddDbContext<ApplicationDbContext>(opt =>
     opt.UseSqlite($"Data Source={dbPath}"));
+
+builder.Services.AddTopicModule();
+builder.Services.AddResearchModule();
+builder.Services.AddAiModule(builder.Configuration);
+builder.Services.AddContentModule();
+
+builder.Services.AddSingleton<WsHub>();
+builder.Services.AddSingleton<ContentQueueService>();
+builder.Services.AddHostedService<ContentQueueWorker>();
 
 var app = builder.Build();
 
@@ -31,8 +49,11 @@ using (var scope = app.Services.CreateScope())
 app.UseWebSockets();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+app.MapTopicEndpoints();
+app.MapResearchEndpoints();
+app.MapContentEndpoints();
 
-app.Map("/ws", async (HttpContext context) =>
+app.Map("/ws", async (HttpContext context, WsHub hub) =>
 {
     if (!context.WebSockets.IsWebSocketRequest)
     {
@@ -43,15 +64,25 @@ app.Map("/ws", async (HttpContext context) =>
     var ct = context.RequestAborted;
     using var ws = await context.WebSockets.AcceptWebSocketAsync();
 
+    var socketId = Guid.NewGuid().ToString("N");
+    hub.Register(socketId, ws);
+
     var msg = JsonSerializer.SerializeToUtf8Bytes(new { type = "connected" });
     await ws.SendAsync(msg, WebSocketMessageType.Text, true, ct);
 
     var buffer = new byte[1024];
-    while (ws.State == WebSocketState.Open)
+    try
     {
-        var result = await ws.ReceiveAsync(buffer, ct);
-        if (result.MessageType == WebSocketMessageType.Close)
-            await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+        while (ws.State == WebSocketState.Open)
+        {
+            var result = await ws.ReceiveAsync(buffer, ct);
+            if (result.MessageType == WebSocketMessageType.Close)
+                await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+        }
+    }
+    finally
+    {
+        hub.Unregister(socketId);
     }
 });
 

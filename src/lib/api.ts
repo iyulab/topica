@@ -27,6 +27,12 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export async function apiDelete(path: string): Promise<void> {
+  const url = await getBaseUrl();
+  const res = await fetch(`${url}${path}`, { method: "DELETE" });
+  if (!res.ok && res.status !== 204) throw new Error(`DELETE ${path} failed: ${res.status}`);
+}
+
 export async function checkHealth(): Promise<boolean> {
   try {
     const data = await apiGet<{ status: string }>("/health");
@@ -34,4 +40,47 @@ export async function checkHealth(): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// --- Topic API ---
+
+export interface Topic {
+  id: string;
+  title: string;
+  description: string;
+  userLevel: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getTopics(): Promise<Topic[]> {
+  return apiGet<Topic[]>("/topics");
+}
+
+export async function createTopic(title: string, userLevel: number): Promise<Topic> {
+  return apiPost<Topic>("/topics", { title, userLevel });
+}
+
+export async function deleteTopic(id: string): Promise<void> {
+  return apiDelete(`/topics/${id}`);
+}
+
+// --- Content API ---
+
+export interface Content {
+  id: string;
+  topicId: string;
+  type: number;
+  level: number;
+  body: string;
+  status: number;
+  generatedAt: string;
+}
+
+export async function getContents(topicId: string): Promise<Content[]> {
+  return apiGet<Content[]>(`/topics/${topicId}/contents`);
+}
+
+export async function generateContent(topicId: string, type: number, level: number): Promise<Content> {
+  return apiPost<Content>(`/topics/${topicId}/contents/generate`, { type, level });
 }

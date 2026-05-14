@@ -1,10 +1,12 @@
 import { useEffect } from "react";
+import { RouterProvider } from "react-router-dom";
+import { router } from "./app/Router";
 import { checkHealth } from "./lib/api";
 import { topicaWs } from "./lib/ws";
 import { useAppStore } from "./lib/store";
 
 export default function App() {
-  const { isConnected, setConnected } = useAppStore();
+  const { setConnected } = useAppStore();
 
   useEffect(() => {
     let cancelled = false;
@@ -32,15 +34,5 @@ export default function App() {
     };
   }, [setConnected]);
 
-  return (
-    <div style={{ padding: 32, fontFamily: "sans-serif" }}>
-      <h1>Topica</h1>
-      <p>
-        Backend:{" "}
-        <span style={{ color: isConnected ? "green" : "orange" }}>
-          {isConnected ? "Connected" : "Connecting..."}
-        </span>
-      </p>
-    </div>
-  );
+  return <RouterProvider router={router} />;
 }

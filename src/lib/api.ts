@@ -91,14 +91,20 @@ export interface AiSettings {
   model: string;
   language: string;
   hasApiKey: boolean;
+  embeddingModel: string;
 }
 
 export async function getSettings(): Promise<AiSettings> {
   return apiGet<AiSettings>("/settings");
 }
 
-export async function saveSettings(apiKey: string, model: string, language: string): Promise<void> {
-  await apiPost("/settings", { apiKey, model, language });
+export async function saveSettings(
+  apiKey: string,
+  model: string,
+  language: string,
+  embeddingModel: string
+): Promise<void> {
+  await apiPost("/settings", { apiKey, model, language, embeddingModel });
 }
 
 // --- Chat API ---
@@ -174,6 +180,16 @@ export async function submitEval(
   total: number
 ): Promise<EvalResult> {
   return apiPost<EvalResult>(`/topics/${topicId}/eval`, { contentId, score, total });
+}
+
+export interface LevelRecommendation {
+  recommendedLevel: number;
+  hasHistory: boolean;
+  avgScore: number | null;
+}
+
+export async function getLevelRecommendation(topicId: string): Promise<LevelRecommendation> {
+  return apiGet<LevelRecommendation>(`/topics/${topicId}/eval/recommendation`);
 }
 
 // --- Tag API ---

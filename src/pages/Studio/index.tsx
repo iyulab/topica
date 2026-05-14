@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getContents, getRelatedTopics, getTags, getTopics, type Content, type RelatedTopic, type Topic } from "../../lib/api";
+import { getContents, getLevelRecommendation, getRelatedTopics, getTags, getTopics, type Content, type LevelRecommendation, type RelatedTopic, type Topic } from "../../lib/api";
 import { topicaWs, type WsMessage } from "../../lib/ws";
 import { useQueueStore } from "../../lib/store";
 import LevelBadge from "../../components/LevelBadge";
@@ -22,6 +22,7 @@ export default function Studio() {
   const [showSurvey, setShowSurvey] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [relatedTopics, setRelatedTopics] = useState<RelatedTopic[]>([]);
+  const [recommendation, setRecommendation] = useState<LevelRecommendation | null>(null);
   const { activeItems } = useQueueStore();
   const topicActiveItems = activeItems.filter((i) => i.topicId === topicId);
 
@@ -32,12 +33,14 @@ export default function Studio() {
       getContents(topicId),
       getTags(topicId).catch(() => [] as string[]),
       getRelatedTopics(topicId).catch(() => [] as RelatedTopic[]),
+      getLevelRecommendation(topicId).catch(() => null),
     ])
-      .then(([t, cs, tgs, rel]) => {
+      .then(([t, cs, tgs, rel, rec]) => {
         setTopic(t);
         setContents(cs);
         setTags(tgs);
         setRelatedTopics(rel);
+        setRecommendation(rec);
       })
       .finally(() => setLoading(false));
   }, [topicId]);
@@ -93,6 +96,14 @@ export default function Studio() {
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
         <h2 style={{ margin: 0, color: "#222" }}>{topic.title}</h2>
         <LevelBadge level={topic.userLevel} />
+        {recommendation?.hasHistory && recommendation.recommendedLevel !== topic.userLevel && (
+          <span style={{
+            padding: "2px 8px", background: "#fff9e6", border: "1px solid #f0c040",
+            borderRadius: 10, fontSize: 11, color: "#b07800",
+          }}>
+            📊 추천 Lv. {recommendation.recommendedLevel}
+          </span>
+        )}
         <button
           onClick={() => setShowSurvey(true)}
           style={{
@@ -167,7 +178,10 @@ export default function Studio() {
               body={tabs[activeTab].content!.body}
               topicId={topicId}
               contentId={tabs[activeTab].content!.id}
-              onLevelChange={(newLevel) => setTopic((t) => t ? { ...t, userLevel: newLevel } : t)}
+              onLevelChange={(newLevel) => {
+                setTopic((t) => t ? { ...t, userLevel: newLevel } : t);
+                if (topicId) getLevelRecommendation(topicId).then(setRecommendation).catch(() => {});
+              }}
             />
           )}
           {tabs[activeTab].renderer === "markdown" && (

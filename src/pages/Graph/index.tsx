@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { apiGet, getRelatedTopics } from "../../lib/api";
 
@@ -19,6 +19,42 @@ interface NodePos {
 const W = 700;
 const H = 480;
 const R = 22;
+const MIN_DIST = R * 2 + 10;
+const PAD = R + 12;
+
+function computeForceLayout(topics: GraphTopic[]): NodePos[] {
+  const n = topics.length;
+  if (n === 0) return [];
+  if (n === 1) return [{ x: W / 2, y: H / 2, topic: topics[0] }];
+
+  const rx = Math.min(180, W / 2 - PAD);
+  const ry = Math.min(160, H / 2 - PAD);
+  const px = topics.map((_, i) => W / 2 + Math.cos((2 * Math.PI * i) / n - Math.PI / 2) * rx);
+  const py = topics.map((_, i) => H / 2 + Math.sin((2 * Math.PI * i) / n - Math.PI / 2) * ry);
+
+  for (let iter = 0; iter < 200; iter++) {
+    for (let i = 0; i < n; i++) {
+      for (let j = i + 1; j < n; j++) {
+        const dx = px[j] - px[i];
+        const dy = py[j] - py[i];
+        const d = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        if (d < MIN_DIST) {
+          const push = ((MIN_DIST - d) / d) * 0.5;
+          px[i] -= dx * push;
+          py[i] -= dy * push;
+          px[j] += dx * push;
+          py[j] += dy * push;
+        }
+      }
+      px[i] += (W / 2 - px[i]) * 0.02;
+      py[i] += (H / 2 - py[i]) * 0.02;
+      px[i] = Math.max(PAD, Math.min(W - PAD, px[i]));
+      py[i] = Math.max(PAD, Math.min(H - PAD, py[i]));
+    }
+  }
+
+  return topics.map((t, i) => ({ x: px[i], y: py[i], topic: t }));
+}
 
 export default function GraphPage() {
   const navigate = useNavigate();
@@ -44,12 +80,7 @@ export default function GraphPage() {
     ? topics.filter((t) => t.tags.includes(tagFilter))
     : topics;
 
-  const nodes: NodePos[] = visibleTopics.map((t, i) => {
-    const angle = (2 * Math.PI * i) / visibleTopics.length - Math.PI / 2;
-    const cx = W / 2 + Math.cos(angle) * (visibleTopics.length === 1 ? 0 : 180);
-    const cy = H / 2 + Math.sin(angle) * (visibleTopics.length === 1 ? 0 : 160);
-    return { x: cx, y: cy, topic: t };
-  });
+  const nodes = useMemo(() => computeForceLayout(visibleTopics), [visibleTopics]);
 
   const relatedIds = new Set(related.map((r) => r.id));
 
@@ -59,10 +90,7 @@ export default function GraphPage() {
 
       {allTags.length > 0 && (
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
-          <button
-            onClick={() => setTagFilter(null)}
-            style={tagBtnStyle(!tagFilter)}
-          >전체</button>
+          <button onClick={() => setTagFilter(null)} style={tagBtnStyle(!tagFilter)}>전체</button>
           {allTags.map((tag) => (
             <button key={tag} onClick={() => setTagFilter(tag === tagFilter ? null : tag)} style={tagBtnStyle(tagFilter === tag)}>
               {tag}
@@ -76,7 +104,6 @@ export default function GraphPage() {
       ) : (
         <div style={{ background: "#fff", borderRadius: 12, padding: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
           <svg width={W} height={H}>
-            {/* Edges to related topics */}
             {selected && nodes.map((n) => {
               if (!relatedIds.has(n.topic.id)) return null;
               const from = nodes.find((nd) => nd.topic.id === selected);
@@ -93,7 +120,6 @@ export default function GraphPage() {
               );
             })}
 
-            {/* Nodes */}
             {nodes.map((n) => {
               const isSelected = n.topic.id === selected;
               const isRelated = relatedIds.has(n.topic.id);

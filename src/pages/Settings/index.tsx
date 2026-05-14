@@ -11,6 +11,7 @@ export default function Settings() {
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("gpt-4o-mini");
   const [language, setLanguage] = useState<string>(detectOsLanguage());
+  const [embeddingModel, setEmbeddingModel] = useState("text-embedding-3-small");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -20,8 +21,9 @@ export default function Settings() {
         setSettings(s);
         setModel(s.model);
         setLanguage(s.language || detectOsLanguage());
+        setEmbeddingModel(s.embeddingModel || "text-embedding-3-small");
       })
-      .catch(() => setSettings({ model: "gpt-4o-mini", language: detectOsLanguage(), hasApiKey: false }));
+      .catch(() => setSettings({ model: "gpt-4o-mini", language: detectOsLanguage(), hasApiKey: false, embeddingModel: "text-embedding-3-small" }));
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -29,8 +31,8 @@ export default function Settings() {
     setSaving(true);
     setSaved(false);
     try {
-      await saveSettings(apiKey, model, language);
-      setSettings((s) => s ? { ...s, hasApiKey: !!apiKey || (s.hasApiKey && !apiKey), model, language } : null);
+      await saveSettings(apiKey, model, language, embeddingModel);
+      setSettings((s) => s ? { ...s, hasApiKey: !!apiKey || (s.hasApiKey && !apiKey), model, language, embeddingModel } : null);
       setApiKey("");
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -116,6 +118,31 @@ export default function Settings() {
               <option value="gpt-4o">gpt-4o</option>
               <option value="gpt-4-turbo">gpt-4-turbo</option>
             </select>
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+              임베딩 모델
+            </label>
+            <select
+              value={embeddingModel}
+              onChange={(e) => setEmbeddingModel(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                border: "1px solid #ddd",
+                borderRadius: 6,
+                fontSize: 14,
+                background: "#fff",
+              }}
+            >
+              <option value="text-embedding-3-small">text-embedding-3-small (권장, 저비용)</option>
+              <option value="text-embedding-3-large">text-embedding-3-large (고성능)</option>
+              <option value="text-embedding-ada-002">text-embedding-ada-002 (구형)</option>
+            </select>
+            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#888" }}>
+              변경 시 기존 임베딩은 다음 Summary 생성 시 자동 갱신됩니다.
+            </p>
           </div>
 
           <div style={{ marginBottom: 20 }}>

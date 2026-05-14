@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Topica.Api.Modules.Queue;
 using Topica.Api.Modules.Research;
 using Topica.Infrastructure.Data;
 using WebLookup;
@@ -42,6 +44,15 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
             var chatClientDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IChatClient));
             if (chatClientDescriptor is not null) services.Remove(chatClientDescriptor);
             services.AddSingleton<IChatClient>(new FakeChatClient("**테스트 요약입니다.**"));
+
+            // Remove ContentQueueWorker to prevent background content generation from racing with tests.
+            // POST /topics enqueues defaults; without the worker, topics start with empty contents.
+            var workerDescriptors = services
+                .Where(d => d.ServiceType == typeof(IHostedService) &&
+                            d.ImplementationType == typeof(ContentQueueWorker))
+                .ToList();
+            foreach (var d in workerDescriptors)
+                services.Remove(d);
         });
     }
 

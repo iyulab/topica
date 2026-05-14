@@ -57,6 +57,29 @@ public static class EvalEndpoints
             return Results.Ok(sessions);
         });
 
+        group.MapGet("/recommendation", async (Guid topicId, ApplicationDbContext db, CancellationToken ct) =>
+        {
+            var topic = await db.Topics.FindAsync([topicId], ct);
+            if (topic is null) return Results.NotFound();
+
+            var scores = await db.EvalSessions
+                .Where(e => e.TopicId == topicId)
+                .OrderByDescending(e => e.CreatedAt)
+                .Take(5)
+                .Select(e => e.Score)
+                .ToListAsync(ct);
+
+            if (scores.Count == 0)
+                return Results.Ok(new { recommendedLevel = topic.UserLevel, hasHistory = false, avgScore = (float?)null });
+
+            var avg = scores.Average();
+            int recommended = topic.UserLevel;
+            if (avg >= 0.75f) recommended = Math.Min(10, topic.UserLevel + 1);
+            else if (avg <= 0.45f) recommended = Math.Max(1, topic.UserLevel - 1);
+
+            return Results.Ok(new { recommendedLevel = recommended, hasHistory = true, avgScore = avg });
+        });
+
         return app;
     }
 }

@@ -8,7 +8,7 @@ namespace Topica.Api.Modules.Queue;
 
 public record QueueRequest(Guid TopicId, ContentType Type, int Level = 1, int Priority = 0);
 
-public class ContentQueueService
+public class ContentQueueService(IServiceProvider services)
 {
     private readonly Channel<QueueRequest> _channel =
         Channel.CreateBounded<QueueRequest>(new BoundedChannelOptions(100)
@@ -26,6 +26,22 @@ public class ContentQueueService
         int priority = 0,
         CancellationToken ct = default)
     {
+        try
+        {
+            await using var scope = services.CreateAsyncScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.ContentQueueItems.Add(new ContentQueueItem
+            {
+                TopicId = topicId,
+                Type = type,
+                Level = level,
+                Priority = priority,
+                Status = QueueStatus.Pending,
+            });
+            await db.SaveChangesAsync(ct);
+        }
+        catch { /* duplicate or transient error — channel-only enqueue still proceeds */ }
+
         var request = new QueueRequest(topicId, type, level, priority);
         return await _channel.Writer.WaitToWriteAsync(ct) &&
                _channel.Writer.TryWrite(request);
@@ -39,4 +55,7 @@ public class ContentQueueService
         await EnqueueAsync(topicId, ContentType.Quiz, userLevel, priority: 7, ct: ct);
         await EnqueueAsync(topicId, ContentType.Mindmap, userLevel, priority: 6, ct: ct);
     }
+
+    internal bool TryRestoreToChannel(QueueRequest request)
+        => _channel.Writer.TryWrite(request);
 }

@@ -1,0 +1,217 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release-windows:
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Restore .NET packages
+        run: dotnet restore backend/Topica.Api/Topica.Api.csproj
+
+      - name: Build .NET sidecar (Windows x64)
+        shell: pwsh
+        run: |
+          dotnet publish backend/Topica.Api/Topica.Api.csproj `
+            -c Release -r win-x64 --self-contained false `
+            -o backend-pub --no-restore
+          New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null
+          Copy-Item backend-pub/Topica.Api.exe `
+            src-tauri/binaries/Topica.Api-x86_64-pc-windows-msvc.exe
+          Get-ChildItem backend-pub -Filter *.dll |
+            Copy-Item -Destination src-tauri/binaries/
+          Get-ChildItem backend-pub -Filter *.json |
+            Where-Object { $_.Name -ne 'appsettings.Development.json' } |
+            Copy-Item -Destination src-tauri/binaries/
+          Remove-Item -Recurse -Force backend-pub
+
+      - name: Build Tauri installer (Windows)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Topica ${{ github.ref_name }}'
+          releaseBody: |
+            ## 설치 방법
+
+            **Windows**: NSIS 설치 파일(`.exe`) 또는 MSI 파일 다운로드 후 설치
+            > 설치 전 [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)이 필요합니다.
+
+            **macOS**: `.dmg` 파일 다운로드 후 설치
+            > .NET 10 Runtime 필요
+
+            **Linux**: `.AppImage` 또는 `.deb` 파일 다운로드 후 설치
+            > .NET 10 Runtime 필요
+          releaseDraft: true
+          prerelease: false
+
+  release-macos:
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Restore .NET packages
+        run: dotnet restore backend/Topica.Api/Topica.Api.csproj
+
+      - name: Build .NET sidecar (macOS arm64)
+        run: |
+          dotnet publish backend/Topica.Api/Topica.Api.csproj \
+            -c Release -r osx-arm64 --self-contained false \
+            -o backend-pub --no-restore
+          mkdir -p src-tauri/binaries
+          cp backend-pub/Topica.Api \
+            src-tauri/binaries/Topica.Api-aarch64-apple-darwin
+          cp backend-pub/*.dll src-tauri/binaries/ 2>/dev/null || true
+          cp backend-pub/*.json src-tauri/binaries/ 2>/dev/null || true
+          rm -f src-tauri/binaries/appsettings.Development.json
+          rm -rf backend-pub
+
+      - name: Build Tauri app (macOS)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Topica ${{ github.ref_name }}'
+          releaseDraft: true
+          prerelease: false
+          args: --target aarch64-apple-darwin
+
+  release-linux:
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install Tauri Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: Install frontend dependencies
+        run: pnpm install
+
+      - name: Restore .NET packages
+        run: dotnet restore backend/Topica.Api/Topica.Api.csproj
+
+      - name: Build .NET sidecar (Linux x64)
+        run: |
+          dotnet publish backend/Topica.Api/Topica.Api.csproj \
+            -c Release -r linux-x64 --self-contained false \
+            -o backend-pub --no-restore
+          mkdir -p src-tauri/binaries
+          cp backend-pub/Topica.Api \
+            src-tauri/binaries/Topica.Api-x86_64-unknown-linux-gnu
+          cp backend-pub/*.dll src-tauri/binaries/ 2>/dev/null || true
+          cp backend-pub/*.json src-tauri/binaries/ 2>/dev/null || true
+          cp backend-pub/*.so src-tauri/binaries/ 2>/dev/null || true
+          rm -f src-tauri/binaries/appsettings.Development.json
+          rm -rf backend-pub
+
+      - name: Build Tauri app (Linux)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Topica ${{ github.ref_name }}'
+          releaseDraft: true
+          prerelease: false

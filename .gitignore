@@ -1,0 +1,8 @@
+claudedocs/
+CLAUDE.md
+node_modules/
+dist/
+target/
+*.user
+.vs/
+src-tauri/binaries/

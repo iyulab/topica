@@ -7,10 +7,13 @@ export default function App() {
   const { isConnected, setConnected } = useAppStore();
 
   useEffect(() => {
+    let cancelled = false;
+
     const init = async () => {
-      // Wait for sidecar to start (up to 5 seconds)
       for (let i = 0; i < 10; i++) {
+        if (cancelled) return;
         const ok = await checkHealth();
+        if (cancelled) return;
         if (ok) {
           await topicaWs.connect();
           setConnected(true);
@@ -19,8 +22,14 @@ export default function App() {
         await new Promise((r) => setTimeout(r, 500));
       }
     };
+
     init();
-    return () => topicaWs.close();
+
+    return () => {
+      cancelled = true;
+      topicaWs.close();
+      setConnected(false);
+    };
   }, [setConnected]);
 
   return (

@@ -1,6 +1,7 @@
 use std::net::TcpListener;
-use std::sync::OnceLock;
-use tauri_plugin_shell::ShellExt;
+use std::sync::{Mutex, OnceLock};
+use tauri::Manager;
+use tauri_plugin_shell::{process::CommandChild, ShellExt};
 
 static BACKEND_PORT: OnceLock<u16> = OnceLock::new();
 
@@ -17,6 +18,8 @@ fn get_backend_port() -> u16 {
     *BACKEND_PORT.get().expect("Backend port not initialized")
 }
 
+struct SidecarHandle(Mutex<Option<CommandChild>>);
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let port = find_free_port();
@@ -31,11 +34,26 @@ pub fn run() {
                 .expect("Topica.Api sidecar not found")
                 .env("TOPICA_PORT", port.to_string());
 
-            let (_rx, _child) = sidecar_command
+            let (_rx, child) = sidecar_command
                 .spawn()
                 .expect("Failed to spawn Topica.Api sidecar");
 
+            app.manage(SidecarHandle(Mutex::new(Some(child))));
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                if let Some(child) = window
+                    .app_handle()
+                    .state::<SidecarHandle>()
+                    .0
+                    .lock()
+                    .unwrap()
+                    .take()
+                {
+                    let _ = child.kill();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![get_backend_port])
         .run(tauri::generate_context!())

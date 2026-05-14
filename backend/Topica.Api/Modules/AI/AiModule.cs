@@ -7,20 +7,8 @@ public static class AiModule
 {
     public static IServiceCollection AddAiModule(this IServiceCollection services, IConfiguration config)
     {
-        var openAiApiKey = config["AI:OpenAI:ApiKey"];
-
-        if (!string.IsNullOrWhiteSpace(openAiApiKey))
-        {
-            var model = config["AI:OpenAI:Model"] ?? "gpt-4o-mini";
-            services.AddSingleton<IChatClient>(
-                new OpenAIClient(openAiApiKey).GetChatClient(model).AsIChatClient());
-        }
-        else
-        {
-            // No provider configured — use a stub for development/testing
-            services.AddSingleton<IChatClient, StubChatClient>();
-        }
-
+        services.Configure<AiSettings>(config.GetSection("AI:OpenAI"));
+        services.AddSingleton<IChatClient, DynamicChatClient>();
         return services;
     }
 }
@@ -35,7 +23,7 @@ internal sealed class StubChatClient : IChatClient
         ChatOptions? options = null,
         CancellationToken cancellationToken = default)
     {
-        var text = "*(AI 제공자가 구성되지 않았습니다. `AI:OpenAI:ApiKey`를 설정하거나 로컬 모델을 구성하세요.)*";
+        var text = "*(AI 제공자가 구성되지 않았습니다. 설정에서 OpenAI API 키를 입력하세요.)*";
         return Task.FromResult(new ChatResponse([new ChatMessage(ChatRole.Assistant, text)]));
     }
 

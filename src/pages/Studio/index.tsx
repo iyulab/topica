@@ -2,8 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getContents, getTopics, type Content, type Topic } from "../../lib/api";
 import { topicaWs, type WsMessage } from "../../lib/ws";
+import { useQueueStore } from "../../lib/store";
 import LevelBadge from "../../components/LevelBadge";
 import MarkdownRenderer from "../../components/MarkdownRenderer";
+import FlashcardViewer from "../../components/FlashcardViewer";
+import QuizViewer from "../../components/QuizViewer";
+import ChatPanel from "../../components/ChatPanel";
 
 export default function Studio() {
   const { topicId } = useParams<{ topicId: string }>();
@@ -14,6 +18,8 @@ export default function Studio() {
   const [activeTab, setActiveTab] = useState(0);
   const contentsRef = useRef(contents);
   contentsRef.current = contents;
+  const { activeItems } = useQueueStore();
+  const topicActiveItems = activeItems.filter((i) => i.topicId === topicId);
 
   useEffect(() => {
     if (!topicId) return;
@@ -49,9 +55,17 @@ export default function Studio() {
 
   const summary = contents.find((c) => c.type === 0);
   const lecture = contents.find((c) => c.type === 1);
+  const flashcard = contents.find((c) => c.type === 2);
+  const quiz = contents.find((c) => c.type === 3);
+  const mindmap = contents.find((c) => c.type === 4);
+
   const tabs = [
-    { label: "요약", content: summary },
-    { label: "강해", content: lecture },
+    { label: "요약", content: summary, isGenerating: topicActiveItems.some((i) => i.contentType === "Summary"), renderer: "markdown" },
+    { label: "강해", content: lecture, isGenerating: topicActiveItems.some((i) => i.contentType === "Lecture"), renderer: "markdown" },
+    { label: "플래시카드", content: flashcard, isGenerating: topicActiveItems.some((i) => i.contentType === "Flashcard"), renderer: "flashcard" },
+    { label: "퀴즈", content: quiz, isGenerating: topicActiveItems.some((i) => i.contentType === "Quiz"), renderer: "quiz" },
+    { label: "마인드맵", content: mindmap, isGenerating: topicActiveItems.some((i) => i.contentType === "Mindmap"), renderer: "markdown" },
+    { label: "채팅", content: null, isGenerating: false, renderer: "chat" },
   ];
 
   return (
@@ -88,20 +102,33 @@ export default function Studio() {
               fontSize: 14,
             }}
           >
-            {tab.label} {tab.content ? "✓" : "⏳"}
+            {tab.label}{" "}
+            {tab.renderer === "chat" ? "💬" : tab.isGenerating ? "⏳" : tab.content ? "✓" : "—"}
           </button>
         ))}
       </div>
 
       {/* Content area */}
-      {tabs[activeTab].content ? (
+      {tabs[activeTab].renderer === "chat" ? (
+        <div style={{ background: "#fff", borderRadius: 8, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+          {topicId && <ChatPanel topicId={topicId} />}
+        </div>
+      ) : tabs[activeTab].content ? (
         <div style={{
           background: "#fff",
           borderRadius: 8,
           padding: 20,
           boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
         }}>
-          <MarkdownRenderer content={tabs[activeTab].content!.body} />
+          {tabs[activeTab].renderer === "flashcard" && (
+            <FlashcardViewer body={tabs[activeTab].content!.body} />
+          )}
+          {tabs[activeTab].renderer === "quiz" && (
+            <QuizViewer body={tabs[activeTab].content!.body} />
+          )}
+          {tabs[activeTab].renderer === "markdown" && (
+            <MarkdownRenderer content={tabs[activeTab].content!.body} />
+          )}
         </div>
       ) : (
         <div style={{
@@ -113,7 +140,9 @@ export default function Studio() {
           color: "#aaa",
           fontSize: 14,
         }}>
-          생성 중... (완료 시 자동 업데이트됩니다)
+          {tabs[activeTab].isGenerating
+            ? "⏳ 생성 중... (완료 시 자동 업데이트됩니다)"
+            : "아직 생성되지 않았습니다."}
         </div>
       )}
     </div>

@@ -1,6 +1,11 @@
 import { create } from "zustand";
 import type { Topic, Content } from "./api";
 
+export interface QueueItem {
+  topicId: string;
+  contentType: string;
+}
+
 interface AppStore {
   isConnected: boolean;
   setConnected: (v: boolean) => void;
@@ -55,4 +60,24 @@ export const useContentStore = create<ContentStore>((set) => ({
       if (!topicIds.includes(content.id)) topicIds.push(content.id);
       return { contents: next, byTopic: new Map(s.byTopic).set(content.topicId, topicIds) };
     }),
+}));
+
+interface QueueStore {
+  activeItems: QueueItem[];
+  startItem: (item: QueueItem) => void;
+  finishItem: (topicId: string, contentType: string) => void;
+}
+
+export const useQueueStore = create<QueueStore>((set) => ({
+  activeItems: [],
+  startItem: (item) =>
+    set((s) => ({
+      activeItems: [...s.activeItems, item],
+    })),
+  finishItem: (topicId, contentType) =>
+    set((s) => ({
+      activeItems: s.activeItems.filter(
+        (i) => !(i.topicId === topicId && i.contentType === contentType)
+      ),
+    })),
 }));

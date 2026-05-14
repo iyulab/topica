@@ -11,6 +11,9 @@ public static class ContentEndpoints
         services.AddScoped<ContentService>();
         services.AddScoped<IContentGenerator, SummaryGenerator>();
         services.AddScoped<IContentGenerator, LectureGenerator>();
+        services.AddScoped<IContentGenerator, FlashcardGenerator>();
+        services.AddScoped<IContentGenerator, QuizGenerator>();
+        services.AddScoped<IContentGenerator, MindmapGenerator>();
         return services;
     }
 

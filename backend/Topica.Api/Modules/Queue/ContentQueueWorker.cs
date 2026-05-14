@@ -20,6 +20,13 @@ public class ContentQueueWorker(
 
     private async Task ProcessRequestAsync(QueueRequest req, CancellationToken ct)
     {
+        await wsHub.BroadcastAsync(new
+        {
+            type = "queue_started",
+            topicId = req.TopicId,
+            contentType = req.Type.ToString(),
+        }, ct);
+
         try
         {
             await using var scope = services.CreateAsyncScope();
@@ -39,6 +46,12 @@ public class ContentQueueWorker(
         catch (Exception ex)
         {
             logger.LogError(ex, "Content generation failed for topic {TopicId} type {Type}", req.TopicId, req.Type);
+            await wsHub.BroadcastAsync(new
+            {
+                type = "queue_failed",
+                topicId = req.TopicId,
+                contentType = req.Type.ToString(),
+            }, CancellationToken.None);
         }
     }
 }

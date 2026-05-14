@@ -2,14 +2,17 @@ using Microsoft.EntityFrameworkCore;
 using System.Net.WebSockets;
 using System.Text.Json;
 using Topica.Api.Modules.AI;
+using Topica.Api.Modules.Chat;
 using Topica.Api.Modules.Contents;
 using Topica.Api.Modules.Queue;
 using Topica.Api.Modules.Research;
+using Topica.Api.Modules.Settings;
 using Topica.Api.Modules.Topics;
 using Topica.Api.Modules.WS;
 using Topica.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true);
 
 builder.Services.ConfigureHttpJsonOptions(opts =>
     opts.SerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles);
@@ -30,6 +33,7 @@ builder.Services.AddTopicModule();
 builder.Services.AddResearchModule();
 builder.Services.AddAiModule(builder.Configuration);
 builder.Services.AddContentModule();
+builder.Services.AddChatModule();
 
 builder.Services.AddSingleton<WsHub>();
 builder.Services.AddSingleton<ContentQueueService>();
@@ -52,6 +56,8 @@ app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 app.MapTopicEndpoints();
 app.MapResearchEndpoints();
 app.MapContentEndpoints();
+app.MapChatEndpoints();
+app.MapSettingsEndpoints();
 
 app.Map("/ws", async (HttpContext context, WsHub hub) =>
 {

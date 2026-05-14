@@ -7,9 +7,9 @@ using Topica.Core.Interfaces;
 
 namespace Topica.Api.Modules.Contents;
 
-public class LectureGenerator(IChatClient chatClient, IOptionsMonitor<AiSettings> options) : IContentGenerator
+public class MindmapGenerator(IChatClient chatClient, IOptionsMonitor<AiSettings> options) : IContentGenerator
 {
-    public ContentType Type => ContentType.Lecture;
+    public ContentType Type => ContentType.Mindmap;
 
     public async Task<Content> GenerateAsync(
         Topic topic,
@@ -19,13 +19,13 @@ public class LectureGenerator(IChatClient chatClient, IOptionsMonitor<AiSettings
     {
         var lang = options.CurrentValue.Language;
         var ctx = PromptBuilder.ResearchContext(research, lang);
-        var prompt = PromptBuilder.Lecture(topic, ctx, level, lang);
+        var prompt = PromptBuilder.Mindmap(topic, ctx, level, lang);
         var response = await chatClient.GetResponseAsync(prompt, cancellationToken: ct);
 
         return new Content
         {
             TopicId = topic.Id,
-            Type = ContentType.Lecture,
+            Type = ContentType.Mindmap,
             Level = level,
             Body = response.Text ?? string.Empty,
             Status = ContentStatus.Published,

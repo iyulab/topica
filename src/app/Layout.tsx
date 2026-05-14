@@ -1,9 +1,10 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
-import { useAppStore } from "../lib/store";
+import { useAppStore, useQueueStore } from "../lib/store";
 import NotificationToast from "../components/NotificationToast";
 
 export default function Layout() {
   const { isConnected } = useAppStore();
+  const { activeItems } = useQueueStore();
   const { pathname } = useLocation();
 
   return (
@@ -23,6 +24,13 @@ export default function Layout() {
           Topica
         </div>
         <NavLink to="/" active={pathname === "/"} label="토픽 목록" />
+        <NavLink to="/settings" active={pathname === "/settings"} label="설정" />
+        {activeItems.length > 0 && (
+          <div style={{ padding: "8px 16px", fontSize: 12, color: "#ffd54f", display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⏳</span>
+            생성 중 {activeItems.length}건
+          </div>
+        )}
         <div style={{ marginTop: "auto", padding: "12px 16px", fontSize: 12, color: "#888" }}>
           백엔드: <span style={{ color: isConnected ? "#4caf50" : "#ff9800" }}>
             {isConnected ? "연결됨" : "연결 중..."}

@@ -35,5 +35,8 @@ public class ContentQueueService
     {
         await EnqueueAsync(topicId, ContentType.Summary, userLevel, priority: 10, ct: ct);
         await EnqueueAsync(topicId, ContentType.Lecture, userLevel, priority: 9, ct: ct);
+        await EnqueueAsync(topicId, ContentType.Flashcard, userLevel, priority: 8, ct: ct);
+        await EnqueueAsync(topicId, ContentType.Quiz, userLevel, priority: 7, ct: ct);
+        await EnqueueAsync(topicId, ContentType.Mindmap, userLevel, priority: 6, ct: ct);
     }
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTopic, deleteTopic, getTopics, type Topic } from "../../lib/api";
-import { useTopicStore } from "../../lib/store";
+import { useTopicStore, useQueueStore } from "../../lib/store";
 import LevelBadge from "../../components/LevelBadge";
 
 export default function TopicList() {
@@ -124,27 +124,52 @@ export default function TopicList() {
           아직 토픽이 없습니다. 위에서 추가해보세요!
         </p>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {topics.map((topic) => (
-            <TopicCard
-              key={topic.id}
-              topic={topic}
-              onOpen={() => navigate(`/topics/${topic.id}/studio`)}
-              onDelete={() => handleDelete(topic.id)}
-            />
-          ))}
-        </div>
+        <TopicListWithQueue
+          topics={topics}
+          onOpen={(id) => navigate(`/topics/${id}/studio`)}
+          onDelete={handleDelete}
+        />
       )}
+    </div>
+  );
+}
+
+function TopicListWithQueue({
+  topics,
+  onOpen,
+  onDelete,
+}: {
+  topics: Topic[];
+  onOpen: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const { activeItems } = useQueueStore();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      {topics.map((topic) => {
+        const activeCount = activeItems.filter((i) => i.topicId === topic.id).length;
+        return (
+          <TopicCard
+            key={topic.id}
+            topic={topic}
+            activeCount={activeCount}
+            onOpen={() => onOpen(topic.id)}
+            onDelete={() => onDelete(topic.id)}
+          />
+        );
+      })}
     </div>
   );
 }
 
 function TopicCard({
   topic,
+  activeCount,
   onOpen,
   onDelete,
 }: {
   topic: Topic;
+  activeCount: number;
   onOpen: () => void;
   onDelete: () => void;
 }) {
@@ -168,6 +193,18 @@ function TopicCard({
           <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{topic.description}</div>
         )}
       </div>
+      {activeCount > 0 && (
+        <span style={{
+          fontSize: 11,
+          color: "#f57c00",
+          background: "#fff3e0",
+          border: "1px solid #ffcc80",
+          borderRadius: 10,
+          padding: "2px 8px",
+        }}>
+          ⏳ 생성 중 {activeCount}
+        </span>
+      )}
       <LevelBadge level={topic.userLevel} />
       <button
         onClick={(e) => {

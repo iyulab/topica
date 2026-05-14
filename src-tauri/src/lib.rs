@@ -26,6 +26,7 @@ pub fn run() {
     BACKEND_PORT.set(port).expect("Port already set");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
         .setup(move |app| {
             let sidecar_command = app

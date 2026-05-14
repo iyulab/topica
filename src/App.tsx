@@ -2,11 +2,12 @@ import { useEffect } from "react";
 import { RouterProvider } from "react-router-dom";
 import { router } from "./app/Router";
 import { checkHealth } from "./lib/api";
-import { topicaWs } from "./lib/ws";
-import { useAppStore } from "./lib/store";
+import { topicaWs, type WsMessage } from "./lib/ws";
+import { useAppStore, useQueueStore } from "./lib/store";
 
 export default function App() {
   const { setConnected } = useAppStore();
+  const { startItem, finishItem } = useQueueStore();
 
   useEffect(() => {
     let cancelled = false;
@@ -33,6 +34,16 @@ export default function App() {
       setConnected(false);
     };
   }, [setConnected]);
+
+  useEffect(() => {
+    return topicaWs.on((msg: WsMessage) => {
+      if (msg.type === "queue_started") {
+        startItem({ topicId: msg.topicId as string, contentType: msg.contentType as string });
+      } else if (msg.type === "content_ready" || msg.type === "queue_failed") {
+        finishItem(msg.topicId as string, msg.contentType as string);
+      }
+    });
+  }, [startItem, finishItem]);
 
   return <RouterProvider router={router} />;
 }

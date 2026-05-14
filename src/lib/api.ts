@@ -84,3 +84,41 @@ export async function getContents(topicId: string): Promise<Content[]> {
 export async function generateContent(topicId: string, type: number, level: number): Promise<Content> {
   return apiPost<Content>(`/topics/${topicId}/contents/generate`, { type, level });
 }
+
+// --- Settings API ---
+
+export interface AiSettings {
+  model: string;
+  language: string;
+  hasApiKey: boolean;
+}
+
+export async function getSettings(): Promise<AiSettings> {
+  return apiGet<AiSettings>("/settings");
+}
+
+export async function saveSettings(apiKey: string, model: string, language: string): Promise<void> {
+  await apiPost("/settings", { apiKey, model, language });
+}
+
+// --- Chat API ---
+
+export interface ChatMessage {
+  id: string;
+  topicId: string;
+  role: number; // 0=User, 1=Assistant
+  message: string;
+  createdAt: string;
+}
+
+export async function getChatHistory(topicId: string): Promise<ChatMessage[]> {
+  return apiGet<ChatMessage[]>(`/topics/${topicId}/chat`);
+}
+
+export async function sendChatMessage(topicId: string, message: string): Promise<ChatMessage> {
+  return apiPost<ChatMessage>(`/topics/${topicId}/chat`, { message });
+}
+
+export async function clearChatHistory(topicId: string): Promise<void> {
+  return apiDelete(`/topics/${topicId}/chat`);
+}

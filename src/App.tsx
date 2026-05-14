@@ -1,51 +1,37 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { useEffect } from "react";
+import { checkHealth } from "./lib/api";
+import { topicaWs } from "./lib/ws";
+import { useAppStore } from "./lib/store";
 
-function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+export default function App() {
+  const { isConnected, setConnected } = useAppStore();
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
-  }
+  useEffect(() => {
+    const init = async () => {
+      // Wait for sidecar to start (up to 5 seconds)
+      for (let i = 0; i < 10; i++) {
+        const ok = await checkHealth();
+        if (ok) {
+          await topicaWs.connect();
+          setConnected(true);
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 500));
+      }
+    };
+    init();
+    return () => topicaWs.close();
+  }, [setConnected]);
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
-        <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
-        />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+    <div style={{ padding: 32, fontFamily: "sans-serif" }}>
+      <h1>Topica</h1>
+      <p>
+        Backend:{" "}
+        <span style={{ color: isConnected ? "green" : "orange" }}>
+          {isConnected ? "Connected" : "Connecting..."}
+        </span>
+      </p>
+    </div>
   );
 }
-
-export default App;

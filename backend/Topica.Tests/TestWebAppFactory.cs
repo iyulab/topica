@@ -17,7 +17,7 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
             if (descriptor != null) services.Remove(descriptor);
 
             services.AddDbContext<ApplicationDbContext>(opt =>
-                opt.UseInMemoryDatabase("TestDb"));
+                opt.UseInMemoryDatabase(Guid.NewGuid().ToString()));
         });
     }
 }

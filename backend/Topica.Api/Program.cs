@@ -40,15 +40,16 @@ app.Map("/ws", async (HttpContext context) =>
         return;
     }
 
+    var ct = context.RequestAborted;
     using var ws = await context.WebSockets.AcceptWebSocketAsync();
 
     var msg = JsonSerializer.SerializeToUtf8Bytes(new { type = "connected" });
-    await ws.SendAsync(msg, WebSocketMessageType.Text, true, CancellationToken.None);
+    await ws.SendAsync(msg, WebSocketMessageType.Text, true, ct);
 
     var buffer = new byte[1024];
     while (ws.State == WebSocketState.Open)
     {
-        var result = await ws.ReceiveAsync(buffer, CancellationToken.None);
+        var result = await ws.ReceiveAsync(buffer, ct);
         if (result.MessageType == WebSocketMessageType.Close)
             await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
     }

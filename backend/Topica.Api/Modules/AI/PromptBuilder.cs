@@ -264,6 +264,10 @@ public static class PromptBuilder
             - Only answer questions related to the topic above.
             - Explain clearly and educationally.
             - Respond in English.
+            - When presenting numerical data, progress, or comparisons, you MAY include a widget block:
+            {WidgetExampleEn}
+            Available widgets: metric, gauge, progress, chart.bar, table
+            Use widgets sparingly — only when they genuinely aid understanding.
             """
         : $"""
             당신은 토픽 학습 도우미입니다.
@@ -278,5 +282,39 @@ public static class PromptBuilder
             - 위 토픽에 관련된 질문에만 답하세요.
             - 명확하고 교육적으로 설명하세요.
             - 한국어로 답하세요.
+            - 수치 데이터, 진도, 비교를 설명할 때 다음과 같이 위젯 블록을 포함할 수 있습니다:
+            {WidgetExampleKo}
+            사용 가능한 위젯: metric, gauge, progress, chart.bar, table
+            위젯은 이해에 실질적으로 도움이 될 때만 사용하세요.
             """;
+
+    private const string WidgetExampleEn = """
+        ```widget
+        {"widget":"metric","data":{"value":42,"unit":"items","label":"Total"}}
+        ```
+        ```widget
+        {"widget":"gauge","data":{"value":73,"min":0,"max":100,"label":"Completion"}}
+        ```
+        ```widget
+        {"widget":"chart.bar","data":[{"x":"Mon","y":3},{"x":"Tue","y":5}],"mapping":{"x":"x","y":"y"}}
+        ```
+        ```widget
+        {"widget":"table","data":[{"term":"A","def":"..."},{"term":"B","def":"..."}]}
+        ```
+        """;
+
+    private const string WidgetExampleKo = """
+        ```widget
+        {"widget":"metric","data":{"value":42,"unit":"개","label":"총계"}}
+        ```
+        ```widget
+        {"widget":"gauge","data":{"value":73,"min":0,"max":100,"label":"완료율"}}
+        ```
+        ```widget
+        {"widget":"chart.bar","data":[{"x":"월","y":3},{"x":"화","y":5}],"mapping":{"x":"x","y":"y"}}
+        ```
+        ```widget
+        {"widget":"table","data":[{"항목":"A","설명":"..."},{"항목":"B","설명":"..."}]}
+        ```
+        """;
 }

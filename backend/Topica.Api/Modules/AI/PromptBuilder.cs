@@ -171,35 +171,39 @@ public static class PromptBuilder
             """;
 
     public static string Mindmap(Topic topic, string researchContext, int level, string language) => language == "en"
-        ? $"""
-            You are an educational content writer. Write a mind map structure for the topic below as a markdown hierarchy.
+        ? $$"""
+            You are an educational content writer. Generate a mind map for the topic below as a JSON tree.
 
-            Topic: {topic.Title}
-            Target level: {level}/10
+            Topic: {{topic.Title}}
+            Target level: {{level}}/10
 
             Reference material:
-            {researchContext}
+            {{researchContext}}
 
             Requirements:
-            - Hierarchical structure branching from the central topic
-            - Use nested markdown lists (- item, indented for hierarchy)
-            - 3-5 depth levels with key concepts and details
-            - Respond with markdown only (no extra explanation)
+            - Central node is the topic title
+            - 4-7 main branches (children of root)
+            - Each branch has 2-4 sub-concepts (grandchildren)
+            - Labels should be concise (1-5 words)
+            - Respond ONLY with this JSON format, no extra text:
+            {"label":"Topic Title","children":[{"label":"Branch 1","children":[{"label":"Sub 1.1","children":[]},{"label":"Sub 1.2","children":[]}]},{"label":"Branch 2","children":[]}]}
             """
-        : $"""
-            당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 마인드맵 구조를 마크다운 계층 목록으로 작성하세요.
+        : $$"""
+            당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 마인드맵을 JSON 트리 형식으로 생성하세요.
 
-            토픽: {topic.Title}
-            대상 수준: {level}/10
+            토픽: {{topic.Title}}
+            대상 수준: {{level}}/10
 
             참고 자료:
-            {researchContext}
+            {{researchContext}}
 
             요구사항:
-            - 중심 주제에서 뻗어나가는 계층 구조
-            - 마크다운 중첩 목록 형식 사용 (- 항목, 들여쓰기로 계층 표현)
-            - 3~5 뎁스, 핵심 개념과 세부 사항 포함
-            - 마크다운만 응답 (다른 설명 불필요)
+            - 루트 노드는 토픽 제목
+            - 주요 가지 4~7개 (루트의 자식)
+            - 각 가지에 하위 개념 2~4개 (손자 노드)
+            - 레이블은 간결하게 (1~5 단어)
+            - 반드시 아래 JSON 형식만 응답, 다른 텍스트 없음:
+            {"label":"토픽 제목","children":[{"label":"가지 1","children":[{"label":"하위 1.1","children":[]},{"label":"하위 1.2","children":[]}]},{"label":"가지 2","children":[]}]}
             """;
 
     public static string TagSystem() =>

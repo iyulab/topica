@@ -6,6 +6,7 @@ import { useQueueStore } from "../../lib/store";
 import LevelBadge from "../../components/LevelBadge";
 import MarkdownRenderer from "../../components/MarkdownRenderer";
 import FlashcardViewer from "../../components/FlashcardViewer";
+import MindmapViewer from "../../components/MindmapViewer";
 import QuizViewer from "../../components/QuizViewer";
 import ChatPanel from "../../components/ChatPanel";
 import SurveyModal from "../../components/SurveyModal";
@@ -87,7 +88,7 @@ export default function Studio() {
     { label: "강해", content: lecture, isGenerating: topicActiveItems.some((i) => i.contentType === "Lecture"), isFailed: topicFailedItems.find((f) => f.contentType === "Lecture"), renderer: "markdown" },
     { label: "플래시카드", content: flashcard, isGenerating: topicActiveItems.some((i) => i.contentType === "Flashcard"), isFailed: topicFailedItems.find((f) => f.contentType === "Flashcard"), renderer: "flashcard" },
     { label: "퀴즈", content: quiz, isGenerating: topicActiveItems.some((i) => i.contentType === "Quiz"), isFailed: topicFailedItems.find((f) => f.contentType === "Quiz"), renderer: "quiz" },
-    { label: "마인드맵", content: mindmap, isGenerating: topicActiveItems.some((i) => i.contentType === "Mindmap"), isFailed: topicFailedItems.find((f) => f.contentType === "Mindmap"), renderer: "markdown" },
+    { label: "마인드맵", content: mindmap, isGenerating: topicActiveItems.some((i) => i.contentType === "Mindmap"), isFailed: topicFailedItems.find((f) => f.contentType === "Mindmap"), renderer: "mindmap" },
     { label: "채팅", content: null, isGenerating: false, isFailed: undefined, renderer: "chat" },
   ];
 
@@ -219,6 +220,9 @@ export default function Studio() {
                 if (topicId) getLevelRecommendation(topicId).then(setRecommendation).catch(() => {});
               }}
             />
+          )}
+          {tabs[activeTab].renderer === "mindmap" && (
+            <MindmapViewer body={tabs[activeTab].content!.body} />
           )}
           {tabs[activeTab].renderer === "markdown" && (
             <MarkdownRenderer content={tabs[activeTab].content!.body} />

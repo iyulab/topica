@@ -62,6 +62,7 @@ export interface Topic {
   userLevel: number;
   createdAt: string;
   updatedAt: string;
+  tags?: string[];
 }
 
 export async function getTopics(): Promise<Topic[]> {

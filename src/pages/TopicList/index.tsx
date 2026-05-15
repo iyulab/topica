@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createTopic, deleteTopic, getTopics, type Topic } from "../../lib/api";
 import { useTopicStore, useQueueStore } from "../../lib/store";
@@ -14,6 +14,8 @@ export default function TopicList() {
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -37,6 +39,23 @@ export default function TopicList() {
       setAdding(false);
     }
   };
+
+  const allTags = useMemo(() => {
+    const set = new Set<string>();
+    topics.forEach((t) => t.tags?.forEach((tag) => set.add(tag)));
+    return Array.from(set).sort();
+  }, [topics]);
+
+  const filteredTopics = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return topics.filter((t) => {
+      const matchesSearch = !q ||
+        t.title.toLowerCase().includes(q) ||
+        (t.description && t.description.toLowerCase().includes(q));
+      const matchesTag = !activeTag || t.tags?.includes(activeTag);
+      return matchesSearch && matchesTag;
+    });
+  }, [topics, searchQuery, activeTag]);
 
   const handleDelete = async (id: string, title: string) => {
     if (!window.confirm(`"${title}" 토픽을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return;
@@ -125,6 +144,70 @@ export default function TopicList() {
         {error && <p style={{ color: "#e53935", fontSize: 12, margin: "8px 0 0" }}>{error}</p>}
       </div>
 
+      {/* Search + Tag filter */}
+      {topics.length >= 3 && (
+        <div style={{ marginBottom: 12 }}>
+          <div style={{ position: "relative", marginBottom: allTags.length > 0 ? 8 : 0 }}>
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="토픽 검색..."
+              style={{
+                width: "100%",
+                padding: "8px 36px 8px 12px",
+                border: "1px solid #ddd",
+                borderRadius: 6,
+                fontSize: 13,
+                boxSizing: "border-box",
+                background: "#fafafa",
+              }}
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                style={{
+                  position: "absolute",
+                  right: 8,
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: "#aaa",
+                  fontSize: 16,
+                  lineHeight: 1,
+                  padding: "0 2px",
+                }}
+                aria-label="검색 지우기"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          {allTags.length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+              {allTags.map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                  style={{
+                    padding: "2px 10px",
+                    border: `1px solid ${activeTag === tag ? "#6c63ff" : "#ddd"}`,
+                    borderRadius: 12,
+                    background: activeTag === tag ? "#6c63ff" : "#fff",
+                    color: activeTag === tag ? "#fff" : "#666",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* List */}
       {loading ? (
         <TopicListSkeleton />
@@ -132,15 +215,26 @@ export default function TopicList() {
         <p style={{ color: "#999", textAlign: "center", padding: "40px 0" }}>
           아직 토픽이 없습니다. 위에서 추가해보세요!
         </p>
+      ) : filteredTopics.length === 0 ? (
+        <p style={{ color: "#999", textAlign: "center", padding: "40px 0" }}>
+          {activeTag ? `"${activeTag}" 태그가 있는 토픽이 없습니다.` : `"${searchQuery}"와 일치하는 토픽이 없습니다.`}
+        </p>
       ) : (
-        <TopicListWithQueue
-          topics={topics}
-          onOpen={(id) => navigate(`/topics/${id}/studio`)}
-          onDelete={(id) => {
-            const topic = topics.find((t) => t.id === id);
-            handleDelete(id, topic?.title ?? "이 토픽");
-          }}
-        />
+        <>
+          {(searchQuery || activeTag) && (
+            <p style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
+              {topics.length}개 중 {filteredTopics.length}개 표시
+            </p>
+          )}
+          <TopicListWithQueue
+            topics={filteredTopics}
+            onOpen={(id) => navigate(`/topics/${id}/studio`)}
+            onDelete={(id) => {
+              const topic = topics.find((t) => t.id === id);
+              handleDelete(id, topic?.title ?? "이 토픽");
+            }}
+          />
+        </>
       )}
     </div>
   );

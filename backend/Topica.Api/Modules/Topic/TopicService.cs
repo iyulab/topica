@@ -4,11 +4,17 @@ using Topica.Core.Entities;
 
 namespace Topica.Api.Modules.Topics;
 
+public record TopicSummary(Guid Id, string Title, string Description, int UserLevel, DateTime CreatedAt, DateTime UpdatedAt, string[] Tags);
+
 public class TopicService(ApplicationDbContext db)
 {
-    public async Task<List<Core.Entities.Topic>> GetAllAsync(CancellationToken ct = default)
+    public async Task<List<TopicSummary>> GetAllAsync(CancellationToken ct = default)
         => await db.Topics
+            .Include(t => t.Tags)
             .OrderByDescending(t => t.UpdatedAt)
+            .Select(t => new TopicSummary(
+                t.Id, t.Title, t.Description, t.UserLevel, t.CreatedAt, t.UpdatedAt,
+                t.Tags.Select(tg => tg.Tag).ToArray()))
             .ToListAsync(ct);
 
     public async Task<Core.Entities.Topic?> GetByIdAsync(Guid id, CancellationToken ct = default)

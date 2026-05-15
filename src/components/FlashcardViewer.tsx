@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 interface Card {
   front: string;
@@ -10,97 +10,142 @@ interface Props {
 }
 
 export default function FlashcardViewer({ body }: Props) {
-  const [flipped, setFlipped] = useState<Set<number>>(new Set());
+  const [isFlipped, setIsFlipped] = useState(false);
   const [current, setCurrent] = useState(0);
+  const [studied, setStudied] = useState<Set<number>>(new Set());
 
   let cards: Card[] = [];
   try { cards = JSON.parse(body) as Card[]; } catch { /* ignore */ }
+
+  const goTo = (idx: number) => {
+    setCurrent(idx);
+    setIsFlipped(false);
+  };
+  const prev = () => { if (current > 0) goTo(current - 1); };
+  const next = () => { if (current < cards.length - 1) goTo(current + 1); };
+  const flip = () => {
+    if (!isFlipped) setStudied((s) => new Set(s).add(current));
+    setIsFlipped((v) => !v);
+  };
+
+  useEffect(() => {
+    if (cards.length === 0) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); }
+      else if (e.key === "ArrowLeft") prev();
+      else if (e.key === "ArrowRight") next();
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [current, isFlipped, cards.length]);
+
   if (cards.length === 0 && body.trim()) {
     return <p style={{ color: "#aaa" }}>플래시카드 데이터를 파싱할 수 없습니다.</p>;
   }
-
   if (cards.length === 0) return <p style={{ color: "#aaa" }}>카드가 없습니다.</p>;
 
   const card = cards[current];
-  const isFlipped = flipped.has(current);
-
-  const toggle = () =>
-    setFlipped((prev) => {
-      const next = new Set(prev);
-      if (next.has(current)) next.delete(current);
-      else next.add(current);
-      return next;
-    });
+  const studiedCount = studied.size;
 
   return (
     <div>
-      <div style={{ textAlign: "center", marginBottom: 16, fontSize: 13, color: "#888" }}>
-        {current + 1} / {cards.length}
+      {/* Progress */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <span style={{ fontSize: 13, color: "#888" }}>{current + 1} / {cards.length}</span>
+        <span style={{ fontSize: 12, color: studiedCount === cards.length ? "#43a047" : "#888" }}>
+          학습 완료 {studiedCount} / {cards.length}
+          {studiedCount === cards.length && " 🎉"}
+        </span>
       </div>
 
+      {/* Flip card */}
       <div
-        onClick={toggle}
-        style={{
-          background: isFlipped ? "#6c63ff" : "#fff",
-          color: isFlipped ? "#fff" : "#222",
-          border: "2px solid #e0e0e0",
-          borderRadius: 12,
-          padding: "48px 32px",
-          textAlign: "center",
-          cursor: "pointer",
-          minHeight: 160,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: 16,
-          lineHeight: 1.6,
-          transition: "background 0.2s, color 0.2s",
-          userSelect: "none",
-        }}
+        onClick={flip}
+        style={{ perspective: 1000, cursor: "pointer", minHeight: 200, userSelect: "none" }}
       >
-        {isFlipped ? card.back : card.front}
+        <div
+          style={{
+            position: "relative",
+            width: "100%",
+            minHeight: 200,
+            transition: "transform 0.45s",
+            transformStyle: "preserve-3d",
+            transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+          }}
+        >
+          {/* Front */}
+          <div style={cardFaceStyle(false)}>
+            {card.front}
+          </div>
+          {/* Back */}
+          <div style={cardFaceStyle(true)}>
+            {card.back}
+          </div>
+        </div>
       </div>
 
-      <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 20 }}>
-        <button
-          onClick={() => { setCurrent((c) => Math.max(0, c - 1)); setFlipped(new Set()); }}
-          disabled={current === 0}
-          style={navBtnStyle(current === 0)}
-        >
+      {/* Keyboard hint */}
+      <p style={{ textAlign: "center", fontSize: 11, color: "#bbb", margin: "8px 0 0" }}>
+        Space: 뒤집기 · ← →: 이동
+      </p>
+
+      {/* Nav buttons */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 12 }}>
+        <button onClick={prev} disabled={current === 0} style={navBtnStyle(current === 0)}>
           ← 이전
         </button>
-        <button
-          onClick={toggle}
-          style={navBtnStyle(false)}
-        >
+        <button onClick={flip} style={navBtnStyle(false)}>
           {isFlipped ? "질문 보기" : "답 보기"}
         </button>
-        <button
-          onClick={() => { setCurrent((c) => Math.min(cards.length - 1, c + 1)); setFlipped(new Set()); }}
-          disabled={current === cards.length - 1}
-          style={navBtnStyle(current === cards.length - 1)}
-        >
+        <button onClick={next} disabled={current === cards.length - 1} style={navBtnStyle(current === cards.length - 1)}>
           다음 →
         </button>
       </div>
 
+      {/* Dot navigator */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 16, justifyContent: "center" }}>
         {cards.map((_, i) => (
           <div
             key={i}
-            onClick={() => { setCurrent(i); setFlipped(new Set()); }}
+            onClick={() => goTo(i)}
+            title={studied.has(i) ? "학습 완료" : "미학습"}
             style={{
               width: 10,
               height: 10,
               borderRadius: "50%",
-              background: i === current ? "#6c63ff" : "#ddd",
+              background: i === current ? "#6c63ff" : studied.has(i) ? "#43a047" : "#ddd",
               cursor: "pointer",
+              transition: "background 0.2s",
             }}
           />
         ))}
       </div>
     </div>
   );
+}
+
+function cardFaceStyle(isBack: boolean): React.CSSProperties {
+  return {
+    position: "absolute",
+    width: "100%",
+    minHeight: 200,
+    backfaceVisibility: "hidden",
+    WebkitBackfaceVisibility: "hidden",
+    transform: isBack ? "rotateY(180deg)" : undefined,
+    background: isBack ? "#6c63ff" : "#fff",
+    border: `2px solid ${isBack ? "#6c63ff" : "#e0e0e0"}`,
+    borderRadius: 12,
+    padding: "48px 32px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 16,
+    lineHeight: 1.6,
+    color: isBack ? "#fff" : "#222",
+    boxSizing: "border-box",
+    textAlign: "center",
+  };
 }
 
 function navBtnStyle(disabled: boolean): React.CSSProperties {

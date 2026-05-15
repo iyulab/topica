@@ -6,6 +6,8 @@ using System.ClientModel;
 
 namespace Topica.Api.Modules.AI;
 
+// Wraps IChatClient to pick up settings changes without restart.
+// OpenAI > Ollama > local(lm-supply) priority. Creates the underlying cloud client per-call.
 public class DynamicChatClient(
     IOptionsMonitor<AiSettings> options,
     [FromKeyedServices("local")] IChatClient localChat) : IChatClient

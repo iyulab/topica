@@ -112,16 +112,29 @@ export default function Studio() {
             📊 추천 Lv. {recommendation.recommendedLevel}
           </span>
         )}
-        <button
-          onClick={() => setShowSurvey(true)}
-          style={{
-            marginLeft: "auto", padding: "4px 12px", border: "1px solid #6c63ff",
-            borderRadius: 6, background: "none", color: "#6c63ff",
-            cursor: "pointer", fontSize: 12,
-          }}
-        >
-          🎯 학습 목표 설문
-        </button>
+        <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+          <button
+            onClick={() => exportTopicMarkdown(topic, contents, tags)}
+            style={{
+              padding: "4px 12px", border: "1px solid #ddd",
+              borderRadius: 6, background: "none", color: "#666",
+              cursor: "pointer", fontSize: 12,
+            }}
+            title="Markdown 파일로 내보내기"
+          >
+            ↓ 내보내기
+          </button>
+          <button
+            onClick={() => setShowSurvey(true)}
+            style={{
+              padding: "4px 12px", border: "1px solid #6c63ff",
+              borderRadius: 6, background: "none", color: "#6c63ff",
+              cursor: "pointer", fontSize: 12,
+            }}
+          >
+            🎯 학습 목표 설문
+          </button>
+        </div>
       </div>
 
       {showSurvey && topicId && (
@@ -299,4 +312,43 @@ export default function Studio() {
       )}
     </div>
   );
+}
+
+const CONTENT_LABELS = ["요약", "강해", "플래시카드", "퀴즈", "마인드맵"];
+
+function exportTopicMarkdown(topic: { title: string; description: string; userLevel: number }, contents: { type: number; body: string }[], tags: string[]) {
+  const lines: string[] = [
+    `# ${topic.title}`,
+    "",
+  ];
+  if (topic.description) lines.push(`> ${topic.description}`, "");
+  lines.push(`**레벨:** ${topic.userLevel}/10`);
+  if (tags.length > 0) lines.push(`**태그:** ${tags.join(", ")}`);
+  lines.push("", "---", "");
+
+  for (const c of contents) {
+    const label = CONTENT_LABELS[c.type] ?? `콘텐츠 ${c.type}`;
+    lines.push(`## ${label}`, "");
+    if (c.type === 2 || c.type === 3) {
+      // Flashcard / Quiz: try pretty-print JSON
+      try {
+        const parsed = JSON.parse(c.body);
+        lines.push("```json", JSON.stringify(parsed, null, 2), "```");
+      } catch {
+        lines.push(c.body);
+      }
+    } else {
+      lines.push(c.body);
+    }
+    lines.push("", "---", "");
+  }
+
+  const markdown = lines.join("\n");
+  const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${topic.title.replace(/[^\w가-힣\s]/g, "_")}.md`;
+  a.click();
+  URL.revokeObjectURL(url);
 }

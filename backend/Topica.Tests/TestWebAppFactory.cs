@@ -41,7 +41,7 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
             services.AddScoped<IWebResearcher>(_ => new NoOpWebResearcher());
 
             // Replace AI chat client with a deterministic fake for tests
-            var chatClientDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IChatClient));
+            var chatClientDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IChatClient) && d.ServiceKey == null);
             if (chatClientDescriptor is not null) services.Remove(chatClientDescriptor);
             services.AddSingleton<IChatClient>(new FakeChatClient("**테스트 요약입니다.**"));
 

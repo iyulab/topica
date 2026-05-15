@@ -71,7 +71,7 @@ public class TagEndpointTests(TestWebAppFactory factory) : IClassFixture<TestWeb
         await using var jsonFactory = factory.WithWebHostBuilder(b =>
             b.ConfigureServices(services =>
             {
-                var existing = services.SingleOrDefault(d => d.ServiceType == typeof(IChatClient));
+                var existing = services.SingleOrDefault(d => d.ServiceType == typeof(IChatClient) && d.ServiceKey == null);
                 if (existing is not null) services.Remove(existing);
                 services.AddSingleton<IChatClient>(
                     new FakeJsonTagClient("""["python", "programming", "basics"]"""));
@@ -101,7 +101,7 @@ public class TagEndpointTests(TestWebAppFactory factory) : IClassFixture<TestWeb
         await using var jsonFactory = factory.WithWebHostBuilder(b =>
             b.ConfigureServices(services =>
             {
-                var existing = services.SingleOrDefault(d => d.ServiceType == typeof(IChatClient));
+                var existing = services.SingleOrDefault(d => d.ServiceType == typeof(IChatClient) && d.ServiceKey == null);
                 if (existing is not null) services.Remove(existing);
                 services.AddSingleton<IChatClient>(
                     new FakeJsonTagClient("```json\n[\"머신러닝\", \"인공지능\"]\n```"));

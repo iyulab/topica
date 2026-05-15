@@ -1,15 +1,17 @@
 using FluxIndex.Core.Application.Interfaces;
 using FluxIndex.Core.Domain.ValueObjects;
 using FluxIndex.Providers.OpenAI.Services;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
 namespace Topica.Api.Modules.AI;
 
 // Singleton wrapper that lazily creates OpenAICompatibleEmbeddingService and recreates
-// it when AiSettings change (OpenAI > Ollama > null priority, matching DynamicChatClient).
+// it when AiSettings change (OpenAI > Ollama > local fallback priority, matching DynamicChatClient).
 public sealed class DynamicEmbeddingService(
     IOptionsMonitor<AiSettings> options,
-    ILoggerFactory loggerFactory) : IEmbeddingService, IDisposable
+    ILoggerFactory loggerFactory,
+    [FromKeyedServices("local")] IEmbeddingService localEmbedding) : IEmbeddingService, IDisposable
 {
     private OpenAICompatibleEmbeddingService? _inner;
     private readonly object _lock = new();
@@ -17,7 +19,7 @@ public sealed class DynamicEmbeddingService(
     private string _cachedApiKey = string.Empty;
     private string _cachedModel = string.Empty;
 
-    private OpenAICompatibleEmbeddingService? GetOrCreate()
+    private IEmbeddingService GetOrCreate()
     {
         var s = options.CurrentValue;
 
@@ -36,7 +38,7 @@ public sealed class DynamicEmbeddingService(
         }
         else
         {
-            return null;
+            return localEmbedding;
         }
 
         lock (_lock)
@@ -62,20 +64,28 @@ public sealed class DynamicEmbeddingService(
     }
 
     public Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
-        => GetOrCreate()?.GenerateEmbeddingAsync(text, ct) ?? Task.FromResult<float[]>([]);
+        => GetOrCreate().GenerateEmbeddingAsync(text, ct);
 
     public Task<IEnumerable<float[]>> GenerateEmbeddingsBatchAsync(
         IEnumerable<string> texts, CancellationToken ct = default)
-        => GetOrCreate()?.GenerateEmbeddingsBatchAsync(texts, ct)
-           ?? Task.FromResult<IEnumerable<float[]>>([]);
+        => GetOrCreate().GenerateEmbeddingsBatchAsync(texts, ct);
 
-    public int GetEmbeddingDimension() => options.CurrentValue.EmbeddingDimension;
+    public int GetEmbeddingDimension()
+    {
+        var s = options.CurrentValue;
+        if (!string.IsNullOrWhiteSpace(s.ApiKey) || !string.IsNullOrWhiteSpace(s.OllamaEmbeddingModel))
+            return s.EmbeddingDimension;
+        return localEmbedding.GetEmbeddingDimension();
+    }
 
     public string GetModelName()
     {
         var s = options.CurrentValue;
-        return !string.IsNullOrWhiteSpace(s.ApiKey) ? s.EmbeddingModel : s.OllamaEmbeddingModel;
+        if (!string.IsNullOrWhiteSpace(s.ApiKey)) return s.EmbeddingModel;
+        if (!string.IsNullOrWhiteSpace(s.OllamaEmbeddingModel)) return s.OllamaEmbeddingModel;
+        return localEmbedding.GetModelName();
     }
+
     public int GetMaxTokens() => 512;
 
     public Task<int> CountTokensAsync(string text, CancellationToken ct = default)
@@ -84,9 +94,11 @@ public sealed class DynamicEmbeddingService(
     public EmbeddingIdentity GetIdentity()
     {
         var s = options.CurrentValue;
-        var provider = !string.IsNullOrWhiteSpace(s.ApiKey) ? "OpenAI" : "Ollama";
-        var model = !string.IsNullOrWhiteSpace(s.ApiKey) ? s.EmbeddingModel : s.OllamaEmbeddingModel;
-        return new EmbeddingIdentity { Provider = provider, Model = model, Dimension = s.EmbeddingDimension };
+        if (!string.IsNullOrWhiteSpace(s.ApiKey))
+            return new EmbeddingIdentity { Provider = "OpenAI", Model = s.EmbeddingModel, Dimension = s.EmbeddingDimension };
+        if (!string.IsNullOrWhiteSpace(s.OllamaEmbeddingModel))
+            return new EmbeddingIdentity { Provider = "Ollama", Model = s.OllamaEmbeddingModel, Dimension = s.EmbeddingDimension };
+        return localEmbedding.GetIdentity();
     }
 
     public void Dispose()

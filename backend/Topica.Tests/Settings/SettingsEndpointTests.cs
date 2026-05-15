@@ -37,6 +37,8 @@ public class SettingsEndpointTests(TestWebAppFactory factory) : IClassFixture<Te
         Assert.True(root.TryGetProperty("ollamaEndpoint", out _));
         Assert.True(root.TryGetProperty("ollamaModel", out _));
         Assert.True(root.TryGetProperty("ollamaEmbeddingModel", out _));
+        Assert.True(root.TryGetProperty("chatProvider", out _));
+        Assert.True(root.TryGetProperty("embeddingProvider", out _));
     }
 
     [Fact]
@@ -60,6 +62,30 @@ public class SettingsEndpointTests(TestWebAppFactory factory) : IClassFixture<Te
         using var doc = JsonDocument.Parse(body);
         Assert.True(doc.RootElement.TryGetProperty("reindexRequired", out var flag));
         Assert.Equal(JsonValueKind.False, flag.ValueKind); // null fields → no change
+    }
+
+    [Fact]
+    public async Task Get_Settings_ReturnsChatProviderField()
+    {
+        var client = factory.CreateClient();
+        var res = await client.GetAsync("/settings");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(body);
+        Assert.True(doc.RootElement.TryGetProperty("chatProvider", out var cp));
+        Assert.Equal("local", cp.GetString());
+    }
+
+    [Fact]
+    public async Task Get_Settings_ReturnsEmbeddingProviderField()
+    {
+        var client = factory.CreateClient();
+        var res = await client.GetAsync("/settings");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(body);
+        Assert.True(doc.RootElement.TryGetProperty("embeddingProvider", out var ep));
+        Assert.Equal("local", ep.GetString());
     }
 
     [Fact]

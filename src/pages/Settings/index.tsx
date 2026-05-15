@@ -34,7 +34,18 @@ export default function Settings() {
         setOllamaModel(s.ollamaModel || "");
         setOllamaEmbeddingModel(s.ollamaEmbeddingModel || "");
       })
-      .catch(() => setSettings({ model: "gpt-4o-mini", language: detectOsLanguage(), hasApiKey: false, embeddingModel: "text-embedding-3-small", embeddingDimension: 1536, ollamaEndpoint: "http://localhost:11434", ollamaModel: "", ollamaEmbeddingModel: "" }));
+      .catch(() => setSettings({
+        model: "gpt-4o-mini",
+        language: detectOsLanguage(),
+        hasApiKey: false,
+        embeddingModel: "text-embedding-3-small",
+        embeddingDimension: 1536,
+        ollamaEndpoint: "http://localhost:11434",
+        ollamaModel: "",
+        ollamaEmbeddingModel: "",
+        chatProvider: "local",
+        embeddingProvider: "local",
+      }));
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -43,7 +54,22 @@ export default function Settings() {
     setSaved(false);
     try {
       const result = await saveSettings(apiKey, model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel);
-      setSettings((s) => s ? { ...s, hasApiKey: !!apiKey || (s.hasApiKey && !apiKey), model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel } : null);
+      setSettings((s) => {
+        if (!s) return null;
+        const newHasApiKey = !!apiKey || (s.hasApiKey && !apiKey);
+        const newChatProvider: "openai" | "ollama" | "local" =
+          newHasApiKey ? "openai" : ollamaModel ? "ollama" : "local";
+        const newEmbeddingProvider: "openai" | "ollama" | "local" =
+          newHasApiKey ? "openai" : ollamaEmbeddingModel ? "ollama" : "local";
+        return {
+          ...s,
+          hasApiKey: newHasApiKey,
+          model, language, embeddingModel, embeddingDimension,
+          ollamaEndpoint, ollamaModel, ollamaEmbeddingModel,
+          chatProvider: newChatProvider,
+          embeddingProvider: newEmbeddingProvider,
+        };
+      });
       setApiKey("");
       setSaved(true);
       setReindexRequired(result.reindexRequired);
@@ -53,9 +79,46 @@ export default function Settings() {
     }
   };
 
+  const isFullyLocal = !!settings && settings.chatProvider === "local" && settings.embeddingProvider === "local";
+
   return (
     <div style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
       <h2 style={{ margin: "0 0 24px", color: "#222" }}>설정</h2>
+
+      {settings && (
+        <div style={{
+          background: isFullyLocal
+            ? "#f0eeff"
+            : "#f5f5f5",
+          border: `1px solid ${
+            isFullyLocal
+              ? "#d0c8ff"
+              : "#e0e0e0"
+          }`,
+          borderRadius: 8,
+          padding: "12px 16px",
+          marginBottom: 16,
+          fontSize: 13,
+        }}>
+          <div style={{
+            fontWeight: 600,
+            color: isFullyLocal
+              ? "#6c63ff"
+              : "#666",
+            marginBottom: 4,
+          }}>
+            {isFullyLocal
+              ? "✦ 로컬 AI 활성 (자동 선택)"
+              : "● 외부 AI 제공자 사용 중"}
+          </div>
+          <div style={{ color: "#777", fontSize: 12 }}>
+            채팅: <strong>{settings.chatProvider}</strong>　임베딩: <strong>{settings.embeddingProvider}</strong>
+          </div>
+          <div style={{ color: "#999", fontSize: 11, marginTop: 4 }}>
+            API 키 또는 Ollama 설정 시 해당 제공자가 우선 적용됩니다.
+          </div>
+        </div>
+      )}
 
       {reindexRequired && (
         <div style={{
@@ -98,7 +161,7 @@ export default function Settings() {
             fontSize: 13,
             color: "#856404",
           }}>
-            ⚠️ API 키가 설정되지 않았습니다. 콘텐츠 생성이 스텁 모드로 실행됩니다.
+            ⚠️ API 키가 설정되지 않았습니다. 로컬 AI(자동 선택)로 콘텐츠를 생성합니다. 초기 모델 다운로드 시 시간이 걸릴 수 있습니다.
           </div>
         )}
 

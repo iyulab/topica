@@ -1,4 +1,5 @@
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using OpenAI;
 using System.ClientModel;
@@ -6,8 +7,10 @@ using System.ClientModel;
 namespace Topica.Api.Modules.AI;
 
 // Wraps IChatClient to pick up settings changes without restart.
-// Creates the underlying client per-call (acceptable for low-frequency AI requests).
-public class DynamicChatClient(IOptionsMonitor<AiSettings> options) : IChatClient
+// OpenAI > Ollama > local(lm-supply) priority. Creates the underlying cloud client per-call.
+public class DynamicChatClient(
+    IOptionsMonitor<AiSettings> options,
+    [FromKeyedServices("local")] IChatClient localChat) : IChatClient
 {
     public ChatClientMetadata Metadata => new("dynamic", null, null);
 
@@ -15,14 +18,17 @@ public class DynamicChatClient(IOptionsMonitor<AiSettings> options) : IChatClien
     {
         var settings = options.CurrentValue;
         if (!string.IsNullOrWhiteSpace(settings.ApiKey))
-            return new OpenAIClient(settings.ApiKey).GetChatClient(settings.Model).AsIChatClient();
+            return new OpenAIClient(settings.ApiKey)
+                .GetChatClient(settings.Model).AsIChatClient();
         if (!string.IsNullOrWhiteSpace(settings.OllamaModel))
         {
             var endpoint = new Uri(settings.OllamaEndpoint.TrimEnd('/') + "/v1");
-            return new OpenAIClient(new ApiKeyCredential("ollama"), new OpenAIClientOptions { Endpoint = endpoint })
+            return new OpenAIClient(
+                new ApiKeyCredential("ollama"),
+                new OpenAIClientOptions { Endpoint = endpoint })
                 .GetChatClient(settings.OllamaModel).AsIChatClient();
         }
-        return new StubChatClient();
+        return localChat;
     }
 
     public Task<ChatResponse> GetResponseAsync(

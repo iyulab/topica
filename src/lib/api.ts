@@ -96,6 +96,8 @@ export interface AiSettings {
   ollamaEndpoint: string;
   ollamaModel: string;
   ollamaEmbeddingModel: string;
+  chatProvider: "local" | "ollama" | "openai";
+  embeddingProvider: "local" | "ollama" | "openai";
 }
 
 export async function getSettings(): Promise<AiSettings> {

@@ -22,6 +22,12 @@ public static class SettingsEndpoints
                 ollamaEndpoint = s.OllamaEndpoint,
                 ollamaModel = s.OllamaModel,
                 ollamaEmbeddingModel = s.OllamaEmbeddingModel,
+                chatProvider = !string.IsNullOrWhiteSpace(s.ApiKey) ? "openai"
+                             : !string.IsNullOrWhiteSpace(s.OllamaModel) ? "ollama"
+                             : "local",
+                embeddingProvider = !string.IsNullOrWhiteSpace(s.ApiKey) ? "openai"
+                                  : !string.IsNullOrWhiteSpace(s.OllamaEmbeddingModel) ? "ollama"
+                                  : "local",
             });
         });
 

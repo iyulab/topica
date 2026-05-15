@@ -15,6 +15,8 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
+    <PackageReference Include="LMSupply.Embedder" Version="0.20.2" />
+    <PackageReference Include="LMSupply.Generator" Version="0.23.0" />
   </ItemGroup>
 
   <PropertyGroup>

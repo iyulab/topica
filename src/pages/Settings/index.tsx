@@ -54,7 +54,22 @@ export default function Settings() {
     setSaved(false);
     try {
       const result = await saveSettings(apiKey, model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel);
-      setSettings((s) => s ? { ...s, hasApiKey: !!apiKey || (s.hasApiKey && !apiKey), model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel } : null);
+      setSettings((s) => {
+        if (!s) return null;
+        const newHasApiKey = !!apiKey || (s.hasApiKey && !apiKey);
+        const newChatProvider: "openai" | "ollama" | "local" =
+          newHasApiKey ? "openai" : ollamaModel ? "ollama" : "local";
+        const newEmbeddingProvider: "openai" | "ollama" | "local" =
+          newHasApiKey ? "openai" : ollamaEmbeddingModel ? "ollama" : "local";
+        return {
+          ...s,
+          hasApiKey: newHasApiKey,
+          model, language, embeddingModel, embeddingDimension,
+          ollamaEndpoint, ollamaModel, ollamaEmbeddingModel,
+          chatProvider: newChatProvider,
+          embeddingProvider: newEmbeddingProvider,
+        };
+      });
       setApiKey("");
       setSaved(true);
       setReindexRequired(result.reindexRequired);
@@ -64,17 +79,19 @@ export default function Settings() {
     }
   };
 
+  const isFullyLocal = !!settings && settings.chatProvider === "local" && settings.embeddingProvider === "local";
+
   return (
     <div style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
       <h2 style={{ margin: "0 0 24px", color: "#222" }}>설정</h2>
 
       {settings && (
         <div style={{
-          background: settings.chatProvider === "local" && settings.embeddingProvider === "local"
+          background: isFullyLocal
             ? "#f0eeff"
             : "#f5f5f5",
           border: `1px solid ${
-            settings.chatProvider === "local" && settings.embeddingProvider === "local"
+            isFullyLocal
               ? "#d0c8ff"
               : "#e0e0e0"
           }`,
@@ -85,12 +102,12 @@ export default function Settings() {
         }}>
           <div style={{
             fontWeight: 600,
-            color: settings.chatProvider === "local" && settings.embeddingProvider === "local"
+            color: isFullyLocal
               ? "#6c63ff"
               : "#666",
             marginBottom: 4,
           }}>
-            {settings.chatProvider === "local" && settings.embeddingProvider === "local"
+            {isFullyLocal
               ? "✦ 로컬 AI 활성 (자동 선택)"
               : "● 외부 AI 제공자 사용 중"}
           </div>

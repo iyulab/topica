@@ -94,6 +94,7 @@ export interface AiSettings {
   embeddingModel: string;
   ollamaEndpoint: string;
   ollamaModel: string;
+  ollamaEmbeddingModel: string;
 }
 
 export async function getSettings(): Promise<AiSettings> {
@@ -106,9 +107,10 @@ export async function saveSettings(
   language: string,
   embeddingModel: string,
   ollamaEndpoint: string,
-  ollamaModel: string
+  ollamaModel: string,
+  ollamaEmbeddingModel: string
 ): Promise<void> {
-  await apiPost("/settings", { apiKey, model, language, embeddingModel, ollamaEndpoint, ollamaModel });
+  await apiPost("/settings", { apiKey, model, language, embeddingModel, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel });
 }
 
 // --- Chat API ---

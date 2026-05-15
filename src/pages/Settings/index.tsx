@@ -14,6 +14,7 @@ export default function Settings() {
   const [embeddingModel, setEmbeddingModel] = useState("text-embedding-3-small");
   const [ollamaEndpoint, setOllamaEndpoint] = useState("http://localhost:11434");
   const [ollamaModel, setOllamaModel] = useState("");
+  const [ollamaEmbeddingModel, setOllamaEmbeddingModel] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -26,8 +27,9 @@ export default function Settings() {
         setEmbeddingModel(s.embeddingModel || "text-embedding-3-small");
         setOllamaEndpoint(s.ollamaEndpoint || "http://localhost:11434");
         setOllamaModel(s.ollamaModel || "");
+        setOllamaEmbeddingModel(s.ollamaEmbeddingModel || "");
       })
-      .catch(() => setSettings({ model: "gpt-4o-mini", language: detectOsLanguage(), hasApiKey: false, embeddingModel: "text-embedding-3-small", ollamaEndpoint: "http://localhost:11434", ollamaModel: "" }));
+      .catch(() => setSettings({ model: "gpt-4o-mini", language: detectOsLanguage(), hasApiKey: false, embeddingModel: "text-embedding-3-small", ollamaEndpoint: "http://localhost:11434", ollamaModel: "", ollamaEmbeddingModel: "" }));
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -35,8 +37,8 @@ export default function Settings() {
     setSaving(true);
     setSaved(false);
     try {
-      await saveSettings(apiKey, model, language, embeddingModel, ollamaEndpoint, ollamaModel);
-      setSettings((s) => s ? { ...s, hasApiKey: !!apiKey || (s.hasApiKey && !apiKey), model, language, embeddingModel, ollamaEndpoint, ollamaModel } : null);
+      await saveSettings(apiKey, model, language, embeddingModel, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel);
+      setSettings((s) => s ? { ...s, hasApiKey: !!apiKey || (s.hasApiKey && !apiKey), model, language, embeddingModel, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel } : null);
       setApiKey("");
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -204,9 +206,9 @@ export default function Settings() {
             />
           </div>
 
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              Ollama 모델
+              Ollama 채팅 모델
             </label>
             <input
               type="text"
@@ -223,6 +225,30 @@ export default function Settings() {
                 fontFamily: "monospace",
               }}
             />
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+              Ollama 임베딩 모델
+            </label>
+            <input
+              type="text"
+              value={ollamaEmbeddingModel}
+              onChange={(e) => setOllamaEmbeddingModel(e.target.value)}
+              placeholder="예: nomic-embed-text, mxbai-embed-large (비워두면 비활성화)"
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                border: "1px solid #ddd",
+                borderRadius: 6,
+                fontSize: 14,
+                boxSizing: "border-box",
+                fontFamily: "monospace",
+              }}
+            />
+            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#888" }}>
+              API 키가 없을 때 임베딩(RAG 검색·토픽 유사도)에 사용됩니다.
+            </p>
           </div>
 
           <button

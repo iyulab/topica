@@ -1,6 +1,7 @@
+using FluxIndex.Core.Application.Interfaces;
+using FluxIndex.Core.Application.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using OpenAI.Embeddings;
 using System.Runtime.InteropServices;
 using Topica.Api.Modules.AI;
 using Topica.Core.Entities;
@@ -8,7 +9,10 @@ using Topica.Infrastructure.Data;
 
 namespace Topica.Api.Modules.RAG;
 
-public sealed class RagService(IOptionsMonitor<AiSettings> options, ILogger<RagService> logger)
+public sealed class RagService(
+    IOptionsMonitor<AiSettings> options,
+    IEmbeddingService embeddingService,
+    ILogger<RagService> logger)
 {
     public async Task IndexTopicAsync(Guid topicId, IEnumerable<ResearchDoc> docs, ApplicationDbContext db, CancellationToken ct = default)
     {
@@ -24,8 +28,6 @@ public sealed class RagService(IOptionsMonitor<AiSettings> options, ILogger<RagS
 
         try
         {
-            var client = new EmbeddingClient(settings.EmbeddingModel, settings.ApiKey);
-
             var existing = await db.ResearchChunkEmbeddings
                 .Where(e => e.TopicId == topicId)
                 .ToListAsync(ct);
@@ -33,8 +35,7 @@ public sealed class RagService(IOptionsMonitor<AiSettings> options, ILogger<RagS
 
             foreach (var (text, index) in chunks)
             {
-                var result = await client.GenerateEmbeddingAsync(text, cancellationToken: ct);
-                var vector = result.Value.ToFloats().ToArray();
+                var vector = await embeddingService.GenerateEmbeddingAsync(text, ct);
 
                 db.ResearchChunkEmbeddings.Add(new ResearchChunkEmbedding
                 {
@@ -62,9 +63,7 @@ public sealed class RagService(IOptionsMonitor<AiSettings> options, ILogger<RagS
 
         try
         {
-            var client = new EmbeddingClient(settings.EmbeddingModel, settings.ApiKey);
-            var queryResult = await client.GenerateEmbeddingAsync(query, cancellationToken: ct);
-            var queryVec = queryResult.Value.ToFloats().ToArray();
+            var queryVec = await embeddingService.GenerateEmbeddingAsync(query, ct);
 
             var embeddings = await db.ResearchChunkEmbeddings
                 .Where(e => e.TopicId == topicId)
@@ -72,8 +71,13 @@ public sealed class RagService(IOptionsMonitor<AiSettings> options, ILogger<RagS
 
             if (embeddings.Count == 0) return [];
 
+            var expectedDim = queryVec.Length;
+            var dimMismatch = embeddings.Where(e => FromBytes(e.Vector).Length != expectedDim).ToList();
+            if (dimMismatch.Count > 0)
+                logger.LogWarning("RAG search: {Count} chunk(s) have dimension mismatch (expected {Dim}d). Re-index after changing embedding model.", dimMismatch.Count, expectedDim);
+
             return embeddings
-                .Select(e => (e.ChunkText, Score: CosineSimilarity(queryVec, FromBytes(e.Vector))))
+                .Select(e => (e.ChunkText, Score: VectorMathUtilities.CosineSimilarity(queryVec, FromBytes(e.Vector))))
                 .Where(x => x.Score > 0.3f)
                 .OrderByDescending(x => x.Score)
                 .Take(top)
@@ -92,18 +96,4 @@ public sealed class RagService(IOptionsMonitor<AiSettings> options, ILogger<RagS
 
     private static float[] FromBytes(byte[] b)
         => MemoryMarshal.Cast<byte, float>(b).ToArray();
-
-    private static float CosineSimilarity(float[] a, float[] b)
-    {
-        if (a.Length != b.Length) return 0f;
-        float dot = 0, normA = 0, normB = 0;
-        for (int i = 0; i < a.Length; i++)
-        {
-            dot += a[i] * b[i];
-            normA += a[i] * a[i];
-            normB += b[i] * b[i];
-        }
-        float denom = (float)(Math.Sqrt(normA) * Math.Sqrt(normB));
-        return denom == 0f ? 0f : dot / denom;
-    }
 }

@@ -1,3 +1,5 @@
+using FluxIndex.Core.Application.Interfaces;
+using FluxIndex.Core.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -6,7 +8,7 @@ using Topica.Api.Modules.RAG;
 using Topica.Api.Modules.Research;
 using Topica.Core.Entities;
 using Topica.Infrastructure.Data;
-using WebLookup;
+using SearchResult = WebLookup.SearchResult;
 
 namespace Topica.Tests.Research;
 
@@ -15,7 +17,7 @@ public class ResearchServiceTests
     private static RagService CreateNullRagService()
     {
         var monitor = new StubOptionsMonitor(new AiSettings());
-        return new RagService(monitor, NullLogger<RagService>.Instance);
+        return new RagService(monitor, new StubEmbeddingService(), NullLogger<RagService>.Instance);
     }
 
     private sealed class StubOptionsMonitor(AiSettings value) : IOptionsMonitor<AiSettings>
@@ -23,6 +25,19 @@ public class ResearchServiceTests
         public AiSettings CurrentValue => value;
         public AiSettings Get(string? name) => value;
         public IDisposable? OnChange(Action<AiSettings, string?> listener) => null;
+    }
+
+    private sealed class StubEmbeddingService : IEmbeddingService
+    {
+        public Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
+            => Task.FromResult<float[]>([]);
+        public Task<IEnumerable<float[]>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, CancellationToken ct = default)
+            => Task.FromResult<IEnumerable<float[]>>([]);
+        public int GetEmbeddingDimension() => 0;
+        public string GetModelName() => string.Empty;
+        public int GetMaxTokens() => 0;
+        public Task<int> CountTokensAsync(string text, CancellationToken ct = default) => Task.FromResult(0);
+        public EmbeddingIdentity GetIdentity() => new() { Provider = "stub", Model = "stub" };
     }
     private static ApplicationDbContext CreateContext()
     {

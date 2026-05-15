@@ -1,6 +1,7 @@
+using FluxIndex.Core.Application.Interfaces;
+using FluxIndex.Core.Application.Utilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
-using OpenAI.Embeddings;
 using System.Runtime.InteropServices;
 using Topica.Api.Modules.AI;
 using Topica.Core.Entities;
@@ -8,7 +9,11 @@ using Topica.Infrastructure.Data;
 
 namespace Topica.Api.Modules.Graph;
 
-public class TopicEmbeddingService(ApplicationDbContext db, IOptionsMonitor<AiSettings> options, ILogger<TopicEmbeddingService> logger)
+public class TopicEmbeddingService(
+    ApplicationDbContext db,
+    IOptionsMonitor<AiSettings> options,
+    IEmbeddingService embeddingService,
+    ILogger<TopicEmbeddingService> logger)
 {
     public async Task EmbedTopicAsync(Guid topicId, CancellationToken ct = default)
     {
@@ -26,9 +31,7 @@ public class TopicEmbeddingService(ApplicationDbContext db, IOptionsMonitor<AiSe
 
         try
         {
-            var client = new EmbeddingClient(settings.EmbeddingModel, settings.ApiKey);
-            var result = await client.GenerateEmbeddingAsync(text, cancellationToken: ct);
-            var vector = result.Value.ToFloats().ToArray();
+            var vector = await embeddingService.GenerateEmbeddingAsync(text, ct);
             var bytes = MemoryMarshal.Cast<float, byte>(vector).ToArray();
 
             var existing = await db.TopicEmbeddings.FindAsync([topicId], ct);
@@ -69,25 +72,16 @@ public class TopicEmbeddingService(ApplicationDbContext db, IOptionsMonitor<AiSe
             .Where(e => e.TopicId != topicId)
             .ToListAsync(ct);
 
+        var expectedDim = targetVec.Length;
+        var dimMismatch = all.Where(e => MemoryMarshal.Cast<byte, float>(e.Vector).Length != expectedDim).ToList();
+        if (dimMismatch.Count > 0)
+            logger.LogWarning("FindSimilar: {Count} topic embedding(s) have dimension mismatch (expected {Dim}d). Re-embed after changing embedding model.", dimMismatch.Count, expectedDim);
+
         return all
-            .Select(e => (e.TopicId, Score: CosineSimilarity(targetVec, MemoryMarshal.Cast<byte, float>(e.Vector).ToArray())))
+            .Select(e => (e.TopicId, Score: VectorMathUtilities.CosineSimilarity(targetVec, MemoryMarshal.Cast<byte, float>(e.Vector).ToArray())))
             .Where(x => x.Score > 0.5f)
             .OrderByDescending(x => x.Score)
             .Take(top)
             .ToList();
-    }
-
-    private static float CosineSimilarity(float[] a, float[] b)
-    {
-        if (a.Length != b.Length) return 0f;
-        float dot = 0, normA = 0, normB = 0;
-        for (int i = 0; i < a.Length; i++)
-        {
-            dot += a[i] * b[i];
-            normA += a[i] * a[i];
-            normB += b[i] * b[i];
-        }
-        float denom = (float)(Math.Sqrt(normA) * Math.Sqrt(normB));
-        return denom == 0f ? 0f : dot / denom;
     }
 }

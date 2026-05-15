@@ -20,6 +20,7 @@ public static class SettingsEndpoints
                 embeddingModel = s.EmbeddingModel,
                 ollamaEndpoint = s.OllamaEndpoint,
                 ollamaModel = s.OllamaModel,
+                ollamaEmbeddingModel = s.OllamaEmbeddingModel,
             });
         });
 
@@ -54,6 +55,8 @@ public static class SettingsEndpoints
                 openAi["OllamaEndpoint"] = req.OllamaEndpoint;
             if (req.OllamaModel is not null)
                 openAi["OllamaModel"] = req.OllamaModel;
+            if (req.OllamaEmbeddingModel is not null)
+                openAi["OllamaEmbeddingModel"] = req.OllamaEmbeddingModel;
 
             await File.WriteAllTextAsync(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
@@ -64,4 +67,4 @@ public static class SettingsEndpoints
     }
 }
 
-public record SettingsRequest(string? ApiKey, string? Model, string? Language, string? EmbeddingModel, string? OllamaEndpoint, string? OllamaModel);
+public record SettingsRequest(string? ApiKey, string? Model, string? Language, string? EmbeddingModel, string? OllamaEndpoint, string? OllamaModel, string? OllamaEmbeddingModel);

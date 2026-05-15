@@ -6,6 +6,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="FluxIndex.Core" Version="0.13.10" />
+    <PackageReference Include="FluxIndex.Providers.OpenAI" Version="0.13.10" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.6.0" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.6.0" />
     <PackageReference Include="WebLookup" Version="0.2.1" />

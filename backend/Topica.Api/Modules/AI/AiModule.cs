@@ -1,3 +1,4 @@
+using FluxIndex.Core.Application.Interfaces;
 using Microsoft.Extensions.AI;
 using OpenAI;
 
@@ -9,6 +10,7 @@ public static class AiModule
     {
         services.Configure<AiSettings>(config.GetSection("AI:OpenAI"));
         services.AddSingleton<IChatClient, DynamicChatClient>();
+        services.AddSingleton<IEmbeddingService, DynamicEmbeddingService>();
         return services;
     }
 }

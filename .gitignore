@@ -6,3 +6,4 @@ target/
 *.user
 .vs/
 src-tauri/binaries/
+.playwright-mcp/

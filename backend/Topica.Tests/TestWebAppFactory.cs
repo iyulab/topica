@@ -5,8 +5,10 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Topica.Api.Modules.AI;
 using Topica.Api.Modules.Queue;
 using Topica.Api.Modules.Research;
+using Topica.Api.Modules.Settings;
 using Topica.Infrastructure.Data;
 using WebLookup;
 
@@ -66,6 +68,12 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
                 (sp, _) => new FakeChatClient("*(로컬 모델 테스트 스텁)*"));
             services.AddKeyedSingleton<FluxIndex.Core.Application.Interfaces.IEmbeddingService>("local",
                 (sp, _) => new NoOpLocalEmbeddingService());
+
+            // Replace file-based settings writer with in-memory stub to prevent test-side appsettings.json writes
+            var writableOpts = services.SingleOrDefault(d => d.ServiceType == typeof(IWritableOptions<AiSettings>));
+            if (writableOpts is not null) services.Remove(writableOpts);
+            services.AddSingleton<IWritableOptions<AiSettings>>(
+                new InMemoryWritableOptions<AiSettings>(new AiSettings()));
         });
     }
 
@@ -112,5 +120,16 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
             => Task.FromResult(0);
         public FluxIndex.Core.Domain.ValueObjects.EmbeddingIdentity GetIdentity()
             => new() { Provider = "local", Model = "stub", Dimension = 0 };
+    }
+
+    private sealed class InMemoryWritableOptions<T>(T initialValue) : IWritableOptions<T> where T : class
+    {
+        public T Value { get; private set; } = initialValue;
+
+        public Task UpdateAsync(Action<T> applyChanges)
+        {
+            applyChanges(Value);
+            return Task.CompletedTask;
+        }
     }
 }

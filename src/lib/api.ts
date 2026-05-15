@@ -27,6 +27,17 @@ export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export async function apiPut<T>(path: string, body: unknown): Promise<T> {
+  const url = await getBaseUrl();
+  const res = await fetch(`${url}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`PUT ${path} failed: ${res.status}`);
+  return res.json() as Promise<T>;
+}
+
 export async function apiDelete(path: string): Promise<void> {
   const url = await getBaseUrl();
   const res = await fetch(`${url}${path}`, { method: "DELETE" });
@@ -114,10 +125,14 @@ export async function saveSettings(
   ollamaModel: string,
   ollamaEmbeddingModel: string
 ): Promise<{ reindexRequired: boolean }> {
-  return apiPost<{ message: string; reindexRequired: boolean }>(
+  return apiPut<{ message: string; reindexRequired: boolean }>(
     "/settings",
     { apiKey, model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel }
   );
+}
+
+export async function triggerReindex(): Promise<{ topicsReindexed: number; ragReindexed: number }> {
+  return apiPost<{ message: string; topicsReindexed: number; ragReindexed: number }>("/settings/reindex");
 }
 
 export async function detectOllamaEmbeddingDimension(endpoint: string, model: string): Promise<number> {

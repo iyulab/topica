@@ -1,12 +1,25 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using Topica.Api.Modules.AI;
+using Topica.Api.Modules.Graph;
+using Topica.Api.Modules.RAG;
+using Topica.Infrastructure.Data;
 
 namespace Topica.Api.Modules.Settings;
 
 public static class SettingsEndpoints
 {
+    public static IServiceCollection AddSettingsServices(this IServiceCollection services)
+    {
+        services.AddSingleton<IWritableOptions<AiSettings>>(sp =>
+            new JsonFileWritableOptions<AiSettings>(
+                sp.GetRequiredService<IOptionsMonitor<AiSettings>>(),
+                sp.GetRequiredService<IWebHostEnvironment>(),
+                "AI:OpenAI"));
+        return services;
+    }
+
     public static IEndpointRouteBuilder MapSettingsEndpoints(this IEndpointRouteBuilder app)
     {
         app.MapGet("/settings", (IOptionsMonitor<AiSettings> opts) =>
@@ -31,51 +44,54 @@ public static class SettingsEndpoints
             });
         });
 
-        app.MapPut("/settings", async (SettingsRequest req, IWebHostEnvironment env, IOptionsMonitor<AiSettings> opts) =>
+        app.MapPut("/settings", async (SettingsRequest req, IWritableOptions<AiSettings> settings) =>
         {
-            var prev = opts.CurrentValue;
+            var prev = settings.Value;
             bool reindexRequired =
                 (req.EmbeddingModel is not null && req.EmbeddingModel != prev.EmbeddingModel) ||
                 (req.OllamaEmbeddingModel is not null && req.OllamaEmbeddingModel != prev.OllamaEmbeddingModel) ||
                 (req.EmbeddingDimension is not null && req.EmbeddingDimension.Value != prev.EmbeddingDimension);
 
-            var path = Path.Combine(env.ContentRootPath, "appsettings.json");
-
-            JsonObject root;
-            if (File.Exists(path))
+            await settings.UpdateAsync(s =>
             {
-                var raw = await File.ReadAllTextAsync(path);
-                root = JsonNode.Parse(raw)?.AsObject() ?? new JsonObject();
-            }
-            else
-            {
-                root = new JsonObject();
-            }
-
-            root["AI"] ??= new JsonObject();
-            root["AI"]!.AsObject()["OpenAI"] ??= new JsonObject();
-            var openAi = root["AI"]!["OpenAI"]!.AsObject();
-
-            if (!string.IsNullOrWhiteSpace(req.ApiKey))
-                openAi["ApiKey"] = req.ApiKey;
-            if (req.Model is not null)
-                openAi["Model"] = req.Model;
-            if (req.Language is not null)
-                openAi["Language"] = req.Language;
-            if (req.EmbeddingModel is not null)
-                openAi["EmbeddingModel"] = req.EmbeddingModel;
-            if (req.EmbeddingDimension is not null)
-                openAi["EmbeddingDimension"] = req.EmbeddingDimension.Value;
-            if (req.OllamaEndpoint is not null)
-                openAi["OllamaEndpoint"] = req.OllamaEndpoint;
-            if (req.OllamaModel is not null)
-                openAi["OllamaModel"] = req.OllamaModel;
-            if (req.OllamaEmbeddingModel is not null)
-                openAi["OllamaEmbeddingModel"] = req.OllamaEmbeddingModel;
-
-            await File.WriteAllTextAsync(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+                if (!string.IsNullOrWhiteSpace(req.ApiKey)) s.ApiKey = req.ApiKey;
+                if (req.Model is not null) s.Model = req.Model;
+                if (req.Language is not null) s.Language = req.Language;
+                if (req.EmbeddingModel is not null) s.EmbeddingModel = req.EmbeddingModel;
+                if (req.EmbeddingDimension is not null) s.EmbeddingDimension = req.EmbeddingDimension.Value;
+                if (req.OllamaEndpoint is not null) s.OllamaEndpoint = req.OllamaEndpoint;
+                if (req.OllamaModel is not null) s.OllamaModel = req.OllamaModel;
+                if (req.OllamaEmbeddingModel is not null) s.OllamaEmbeddingModel = req.OllamaEmbeddingModel;
+            });
 
             return Results.Ok(new { message = "설정이 저장되었습니다.", reindexRequired });
+        });
+
+        app.MapPost("/settings/reindex", async (
+            ApplicationDbContext db,
+            TopicEmbeddingService topicEmbedding,
+            RagService rag,
+            ILogger<Program> logger,
+            CancellationToken ct) =>
+        {
+            var topicIds = await db.Topics.Select(t => t.Id).ToListAsync(ct);
+            int topicCount = 0, ragCount = 0;
+
+            foreach (var topicId in topicIds)
+            {
+                await topicEmbedding.EmbedTopicAsync(topicId, ct);
+                topicCount++;
+
+                var docs = await db.ResearchDocs.Where(d => d.TopicId == topicId).ToListAsync(ct);
+                if (docs.Count > 0)
+                {
+                    await rag.IndexTopicAsync(topicId, docs, db, ct);
+                    ragCount++;
+                }
+            }
+
+            logger.LogInformation("Reindex complete: {Topics} topics, {Rag} RAG re-indexed", topicCount, ragCount);
+            return Results.Ok(new { message = "재색인 완료", topicsReindexed = topicCount, ragReindexed = ragCount });
         });
 
         app.MapGet("/ollama/embedding-dimension", async (string? endpoint, string? model, ILogger<Program> logger) =>

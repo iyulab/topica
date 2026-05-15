@@ -89,6 +89,45 @@ public class SettingsEndpointTests(TestWebAppFactory factory) : IClassFixture<Te
     }
 
     [Fact]
+    public async Task Post_Reindex_ReturnsOkWithCounts()
+    {
+        var client = factory.CreateClient();
+        var res = await client.PostAsync("/settings/reindex", null);
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(body);
+        Assert.True(doc.RootElement.TryGetProperty("topicsReindexed", out _));
+        Assert.True(doc.RootElement.TryGetProperty("ragReindexed", out _));
+    }
+
+    [Fact]
+    public async Task Post_Reindex_WithTopics_CountsTopics()
+    {
+        var client = factory.CreateClient();
+        await client.PostAsJsonAsync("/topics", new { Title = "Reindex_Test_Topic", UserLevel = 1 });
+
+        var res = await client.PostAsync("/settings/reindex", null);
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(body);
+        Assert.True(doc.RootElement.TryGetProperty("topicsReindexed", out var count));
+        Assert.True(count.GetInt32() >= 1);
+    }
+
+    [Fact]
+    public async Task Put_Settings_ReindexRequired_WhenEmbeddingModelChanges()
+    {
+        var client = factory.CreateClient();
+        var payload = new { embeddingModel = "text-embedding-3-large" };
+        var res = await client.PutAsJsonAsync("/settings", payload);
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(body);
+        Assert.True(doc.RootElement.TryGetProperty("reindexRequired", out var flag));
+        Assert.Equal(JsonValueKind.True, flag.ValueKind);
+    }
+
+    [Fact]
     public async Task Get_OllamaEmbeddingDimension_WithoutModel_ReturnsBadRequest()
     {
         var client = factory.CreateClient();

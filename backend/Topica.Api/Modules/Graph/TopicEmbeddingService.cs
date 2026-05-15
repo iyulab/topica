@@ -18,7 +18,6 @@ public class TopicEmbeddingService(
     public async Task EmbedTopicAsync(Guid topicId, CancellationToken ct = default)
     {
         var settings = options.CurrentValue;
-        if (string.IsNullOrWhiteSpace(settings.ApiKey) && string.IsNullOrWhiteSpace(settings.OllamaEmbeddingModel)) return;
 
         var topic = await db.Topics
             .Include(t => t.Tags)
@@ -31,7 +30,9 @@ public class TopicEmbeddingService(
 
         var activeModel = !string.IsNullOrWhiteSpace(settings.ApiKey)
             ? settings.EmbeddingModel
-            : settings.OllamaEmbeddingModel;
+            : !string.IsNullOrWhiteSpace(settings.OllamaEmbeddingModel)
+            ? settings.OllamaEmbeddingModel
+            : embeddingService.GetModelName();
 
         try
         {

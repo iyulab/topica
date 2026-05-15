@@ -37,6 +37,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(opt =>
 builder.Services.AddTopicModule();
 builder.Services.AddResearchModule();
 builder.Services.AddAiModule(builder.Configuration);
+builder.Services.AddSettingsServices();
 builder.Services.AddRagModule();
 builder.Services.AddContentModule();
 builder.Services.AddChatModule();

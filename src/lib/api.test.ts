@@ -75,6 +75,18 @@ describe("api.ts", () => {
     expect(settings.hasApiKey).toBe(false);
   });
 
+  it("triggerReindex returns counts", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ message: "재색인 완료", topicsReindexed: 3, ragReindexed: 2 }),
+    });
+
+    const { triggerReindex } = await import("./api");
+    const result = await triggerReindex();
+    expect(result.topicsReindexed).toBe(3);
+    expect(result.ragReindexed).toBe(2);
+  });
+
   it("getSettings chatProvider is openai when api key is set", async () => {
     globalThis.fetch = vi.fn().mockResolvedValueOnce({
       ok: true,

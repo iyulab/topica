@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getSettings, saveSettings, detectOllamaEmbeddingDimension, type AiSettings } from "../../lib/api";
+import { getSettings, saveSettings, detectOllamaEmbeddingDimension, triggerReindex, type AiSettings } from "../../lib/api";
 
 function providerLabel(provider: string): string {
   switch (provider) {
@@ -28,6 +28,8 @@ export default function Settings() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [reindexRequired, setReindexRequired] = useState(false);
+  const [reindexing, setReindexing] = useState(false);
+  const [reindexDone, setReindexDone] = useState<{ topicsReindexed: number; ragReindexed: number } | null>(null);
   const [detectingDim, setDetectingDim] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
 
@@ -138,22 +140,71 @@ export default function Settings() {
           marginBottom: 16,
           fontSize: 13,
           color: "#856404",
-          display: "flex",
-          alignItems: "flex-start",
-          gap: 10,
         }}>
-          <span style={{ fontSize: 16 }}>⚠️</span>
-          <div>
-            <strong>임베딩 모델 또는 차원이 변경되었습니다.</strong><br />
-            기존 임베딩 데이터와 차원이 달라 RAG 검색 및 토픽 유사도 결과가 부정확할 수 있습니다.
-            각 토픽의 Summary를 다시 생성하면 임베딩이 자동으로 갱신됩니다.
-            <button
-              onClick={() => setReindexRequired(false)}
-              style={{ marginLeft: 12, background: "none", border: "none", color: "#856404", cursor: "pointer", fontSize: 12, textDecoration: "underline", padding: 0 }}
-            >
-              닫기
-            </button>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            <span style={{ fontSize: 16 }}>⚠️</span>
+            <div style={{ flex: 1 }}>
+              <strong>임베딩 모델 또는 차원이 변경되었습니다.</strong><br />
+              기존 임베딩 데이터와 차원이 달라 RAG 검색 및 토픽 유사도 결과가 부정확할 수 있습니다.
+              <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center" }}>
+                <button
+                  disabled={reindexing}
+                  onClick={async () => {
+                    setReindexing(true);
+                    setReindexDone(null);
+                    try {
+                      const result = await triggerReindex();
+                      setReindexDone(result);
+                      setReindexRequired(false);
+                    } finally {
+                      setReindexing(false);
+                    }
+                  }}
+                  style={{
+                    background: reindexing ? "#e6c87a" : "#ffc107",
+                    color: "#856404",
+                    border: "1px solid #d4a017",
+                    borderRadius: 6,
+                    padding: "6px 14px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: reindexing ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {reindexing ? "재색인 중..." : "재색인 실행"}
+                </button>
+                <button
+                  onClick={() => setReindexRequired(false)}
+                  style={{ background: "none", border: "none", color: "#856404", cursor: "pointer", fontSize: 12, textDecoration: "underline", padding: 0 }}
+                >
+                  나중에
+                </button>
+              </div>
+            </div>
           </div>
+        </div>
+      )}
+
+      {reindexDone && (
+        <div style={{
+          background: "#d4edda",
+          border: "1px solid #28a745",
+          borderRadius: 8,
+          padding: "10px 16px",
+          marginBottom: 16,
+          fontSize: 13,
+          color: "#155724",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+        }}>
+          <span>✓ 재색인 완료 — 토픽 {reindexDone.topicsReindexed}개, RAG {reindexDone.ragReindexed}개 갱신</span>
+          <button
+            onClick={() => setReindexDone(null)}
+            style={{ background: "none", border: "none", color: "#155724", cursor: "pointer", fontSize: 12, textDecoration: "underline", padding: 0 }}
+          >
+            닫기
+          </button>
         </div>
       )}
 

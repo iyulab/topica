@@ -2,7 +2,6 @@ using LMSupply.Generator;
 using LMSupply.Generator.Abstractions;
 using Microsoft.Extensions.AI;
 using LMChatMessage = LMSupply.Generator.Models.ChatMessage;
-using LMChatRole = LMSupply.Generator.Models.ChatRole;
 
 namespace Topica.Api.Modules.AI;
 
@@ -89,9 +88,22 @@ public sealed class LMSupplyChatAdapter : IChatClient
     }
 
     private static IEnumerable<LMChatMessage> MapMessages(IEnumerable<ChatMessage> messages)
-        => messages.Select(m => m.Role == ChatRole.System
-            ? LMChatMessage.System(m.Text ?? string.Empty)
-            : m.Role == ChatRole.Assistant
-            ? LMChatMessage.Assistant(m.Text ?? string.Empty)
-            : LMChatMessage.User(m.Text ?? string.Empty));
+    {
+        foreach (var m in messages)
+        {
+            if (m.Role == ChatRole.System)
+                yield return LMChatMessage.System(m.Text ?? string.Empty);
+            else if (m.Role == ChatRole.Assistant)
+                yield return LMChatMessage.Assistant(m.Text ?? string.Empty);
+            else if (m.Role == ChatRole.Tool)
+            {
+                var result = m.Contents.OfType<FunctionResultContent>().FirstOrDefault();
+                var callId = result?.CallId ?? string.Empty;
+                var content = result?.Result?.ToString() ?? m.Text ?? string.Empty;
+                yield return LMChatMessage.ToolResult(callId, content);
+            }
+            else
+                yield return LMChatMessage.User(m.Text ?? string.Empty);
+        }
+    }
 }

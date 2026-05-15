@@ -34,7 +34,18 @@ export default function Settings() {
         setOllamaModel(s.ollamaModel || "");
         setOllamaEmbeddingModel(s.ollamaEmbeddingModel || "");
       })
-      .catch(() => setSettings({ model: "gpt-4o-mini", language: detectOsLanguage(), hasApiKey: false, embeddingModel: "text-embedding-3-small", embeddingDimension: 1536, ollamaEndpoint: "http://localhost:11434", ollamaModel: "", ollamaEmbeddingModel: "" }));
+      .catch(() => setSettings({
+        model: "gpt-4o-mini",
+        language: detectOsLanguage(),
+        hasApiKey: false,
+        embeddingModel: "text-embedding-3-small",
+        embeddingDimension: 1536,
+        ollamaEndpoint: "http://localhost:11434",
+        ollamaModel: "",
+        ollamaEmbeddingModel: "",
+        chatProvider: "local",
+        embeddingProvider: "local",
+      }));
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -56,6 +67,41 @@ export default function Settings() {
   return (
     <div style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
       <h2 style={{ margin: "0 0 24px", color: "#222" }}>설정</h2>
+
+      {settings && (
+        <div style={{
+          background: settings.chatProvider === "local" && settings.embeddingProvider === "local"
+            ? "#f0eeff"
+            : "#f5f5f5",
+          border: `1px solid ${
+            settings.chatProvider === "local" && settings.embeddingProvider === "local"
+              ? "#d0c8ff"
+              : "#e0e0e0"
+          }`,
+          borderRadius: 8,
+          padding: "12px 16px",
+          marginBottom: 16,
+          fontSize: 13,
+        }}>
+          <div style={{
+            fontWeight: 600,
+            color: settings.chatProvider === "local" && settings.embeddingProvider === "local"
+              ? "#6c63ff"
+              : "#666",
+            marginBottom: 4,
+          }}>
+            {settings.chatProvider === "local" && settings.embeddingProvider === "local"
+              ? "✦ 로컬 AI 활성 (자동 선택)"
+              : "● 외부 AI 제공자 사용 중"}
+          </div>
+          <div style={{ color: "#777", fontSize: 12 }}>
+            채팅: <strong>{settings.chatProvider}</strong>　임베딩: <strong>{settings.embeddingProvider}</strong>
+          </div>
+          <div style={{ color: "#999", fontSize: 11, marginTop: 4 }}>
+            API 키 또는 Ollama 설정 시 해당 제공자가 우선 적용됩니다.
+          </div>
+        </div>
+      )}
 
       {reindexRequired && (
         <div style={{

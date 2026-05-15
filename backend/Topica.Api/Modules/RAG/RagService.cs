@@ -17,7 +17,7 @@ public sealed class RagService(
     public async Task IndexTopicAsync(Guid topicId, IEnumerable<ResearchDoc> docs, ApplicationDbContext db, CancellationToken ct = default)
     {
         var settings = options.CurrentValue;
-        if (string.IsNullOrWhiteSpace(settings.ApiKey)) return;
+        if (string.IsNullOrWhiteSpace(settings.ApiKey) && string.IsNullOrWhiteSpace(settings.OllamaEmbeddingModel)) return;
 
         var chunks = docs
             .Where(d => !string.IsNullOrWhiteSpace(d.Content))
@@ -37,12 +37,16 @@ public sealed class RagService(
             {
                 var vector = await embeddingService.GenerateEmbeddingAsync(text, ct);
 
+                var activeModel = !string.IsNullOrWhiteSpace(settings.ApiKey)
+                    ? settings.EmbeddingModel
+                    : settings.OllamaEmbeddingModel;
+
                 db.ResearchChunkEmbeddings.Add(new ResearchChunkEmbedding
                 {
                     TopicId = topicId,
                     ChunkText = text,
                     Vector = ToBytes(vector),
-                    Model = settings.EmbeddingModel,
+                    Model = activeModel,
                     ChunkIndex = index,
                 });
             }
@@ -59,7 +63,7 @@ public sealed class RagService(
     public async Task<List<string>> SearchAsync(Guid topicId, string query, ApplicationDbContext db, int top = 5, CancellationToken ct = default)
     {
         var settings = options.CurrentValue;
-        if (string.IsNullOrWhiteSpace(settings.ApiKey)) return [];
+        if (string.IsNullOrWhiteSpace(settings.ApiKey) && string.IsNullOrWhiteSpace(settings.OllamaEmbeddingModel)) return [];
 
         try
         {

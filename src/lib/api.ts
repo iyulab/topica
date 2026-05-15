@@ -92,6 +92,7 @@ export interface AiSettings {
   language: string;
   hasApiKey: boolean;
   embeddingModel: string;
+  embeddingDimension: number;
   ollamaEndpoint: string;
   ollamaModel: string;
   ollamaEmbeddingModel: string;
@@ -106,11 +107,21 @@ export async function saveSettings(
   model: string,
   language: string,
   embeddingModel: string,
+  embeddingDimension: number,
   ollamaEndpoint: string,
   ollamaModel: string,
   ollamaEmbeddingModel: string
-): Promise<void> {
-  await apiPost("/settings", { apiKey, model, language, embeddingModel, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel });
+): Promise<{ reindexRequired: boolean }> {
+  return apiPost<{ message: string; reindexRequired: boolean }>(
+    "/settings",
+    { apiKey, model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel }
+  );
+}
+
+export async function detectOllamaEmbeddingDimension(endpoint: string, model: string): Promise<number> {
+  const params = new URLSearchParams({ endpoint, model });
+  const result = await apiGet<{ dimension: number }>(`/ollama/embedding-dimension?${params}`);
+  return result.dimension;
 }
 
 // --- Chat API ---

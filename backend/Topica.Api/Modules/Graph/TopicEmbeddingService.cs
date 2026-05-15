@@ -18,7 +18,7 @@ public class TopicEmbeddingService(
     public async Task EmbedTopicAsync(Guid topicId, CancellationToken ct = default)
     {
         var settings = options.CurrentValue;
-        if (string.IsNullOrWhiteSpace(settings.ApiKey)) return;
+        if (string.IsNullOrWhiteSpace(settings.ApiKey) && string.IsNullOrWhiteSpace(settings.OllamaEmbeddingModel)) return;
 
         var topic = await db.Topics
             .Include(t => t.Tags)
@@ -28,6 +28,10 @@ public class TopicEmbeddingService(
         var tagText = topic.Tags.Count > 0 ? string.Join(", ", topic.Tags.Select(t => t.Tag)) : "";
         var text = $"{topic.Title}. {topic.Description} {tagText}".Trim();
         if (string.IsNullOrWhiteSpace(text)) return;
+
+        var activeModel = !string.IsNullOrWhiteSpace(settings.ApiKey)
+            ? settings.EmbeddingModel
+            : settings.OllamaEmbeddingModel;
 
         try
         {
@@ -41,14 +45,14 @@ public class TopicEmbeddingService(
                 {
                     TopicId = topicId,
                     Vector = bytes,
-                    Model = settings.EmbeddingModel,
+                    Model = activeModel,
                     UpdatedAt = DateTime.UtcNow,
                 });
             }
             else
             {
                 existing.Vector = bytes;
-                existing.Model = settings.EmbeddingModel;
+                existing.Model = activeModel;
                 existing.UpdatedAt = DateTime.UtcNow;
             }
 

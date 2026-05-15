@@ -70,7 +70,12 @@ public sealed class DynamicEmbeddingService(
            ?? Task.FromResult<IEnumerable<float[]>>([]);
 
     public int GetEmbeddingDimension() => options.CurrentValue.EmbeddingDimension;
-    public string GetModelName() => options.CurrentValue.EmbeddingModel;
+
+    public string GetModelName()
+    {
+        var s = options.CurrentValue;
+        return !string.IsNullOrWhiteSpace(s.ApiKey) ? s.EmbeddingModel : s.OllamaEmbeddingModel;
+    }
     public int GetMaxTokens() => 512;
 
     public Task<int> CountTokensAsync(string text, CancellationToken ct = default)

@@ -56,12 +56,17 @@ function computeForceLayout(topics: GraphTopic[]): NodePos[] {
   return topics.map((t, i) => ({ x: px[i], y: py[i], topic: t }));
 }
 
+const ALL_LEVELS = Array.from({ length: 10 }, (_, i) => i + 1);
+
 export default function GraphPage() {
   const navigate = useNavigate();
   const [topics, setTopics] = useState<GraphTopic[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [related, setRelated] = useState<{ id: string; score: number }[]>([]);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
+  const [hideNoEmbed, setHideNoEmbed] = useState(false);
+  const [minLevel, setMinLevel] = useState(1);
+  const [maxLevel, setMaxLevel] = useState(10);
 
   useEffect(() => {
     apiGet<GraphTopic[]>("/graph").then(setTopics).catch(() => {});
@@ -76,11 +81,21 @@ export default function GraphPage() {
 
   const allTags = [...new Set(topics.flatMap((t) => t.tags))].sort();
 
-  const visibleTopics = tagFilter
-    ? topics.filter((t) => t.tags.includes(tagFilter))
-    : topics;
+  const visibleTopics = useMemo(() => topics.filter((t) => {
+    if (tagFilter && !t.tags.includes(tagFilter)) return false;
+    if (hideNoEmbed && !t.hasEmbedding) return false;
+    if (t.userLevel < minLevel || t.userLevel > maxLevel) return false;
+    return true;
+  }), [topics, tagFilter, hideNoEmbed, minLevel, maxLevel]);
 
   const nodes = useMemo(() => computeForceLayout(visibleTopics), [visibleTopics]);
+
+  // Clear selection when selected topic is filtered out
+  useEffect(() => {
+    if (selected && !visibleTopics.some((t) => t.id === selected)) {
+      setSelected(null);
+    }
+  }, [visibleTopics, selected]);
 
   const relatedIds = new Set(related.map((r) => r.id));
 
@@ -88,19 +103,48 @@ export default function GraphPage() {
     <div style={{ padding: 24 }}>
       <h2 style={{ margin: "0 0 16px", color: "#222" }}>토픽 그래프</h2>
 
-      {allTags.length > 0 && (
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 16 }}>
-          <button onClick={() => setTagFilter(null)} style={tagBtnStyle(!tagFilter)}>전체</button>
-          {allTags.map((tag) => (
-            <button key={tag} onClick={() => setTagFilter(tag === tagFilter ? null : tag)} style={tagBtnStyle(tagFilter === tag)}>
-              {tag}
-            </button>
-          ))}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 16 }}>
+        {allTags.length > 0 && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+            <span style={{ fontSize: 12, color: "#888", marginRight: 2 }}>태그:</span>
+            <button onClick={() => setTagFilter(null)} style={tagBtnStyle(!tagFilter)}>전체</button>
+            {allTags.map((tag) => (
+              <button key={tag} onClick={() => setTagFilter(tag === tagFilter ? null : tag)} style={tagBtnStyle(tagFilter === tag)}>
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, color: "#888" }}>레벨:</span>
+          <select
+            value={minLevel}
+            onChange={(e) => { const v = Number(e.target.value); setMinLevel(v); if (v > maxLevel) setMaxLevel(v); }}
+            style={{ padding: "3px 6px", border: "1px solid #ddd", borderRadius: 6, fontSize: 12 }}
+          >
+            {ALL_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+          <span style={{ fontSize: 12, color: "#aaa" }}>~</span>
+          <select
+            value={maxLevel}
+            onChange={(e) => { const v = Number(e.target.value); setMaxLevel(v); if (v < minLevel) setMinLevel(v); }}
+            style={{ padding: "3px 6px", border: "1px solid #ddd", borderRadius: 6, fontSize: 12 }}
+          >
+            {ALL_LEVELS.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+
+          <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12, color: "#555", cursor: "pointer" }}>
+            <input type="checkbox" checked={hideNoEmbed} onChange={(e) => setHideNoEmbed(e.target.checked)} />
+            임베딩 있는 토픽만
+          </label>
         </div>
-      )}
+      </div>
 
       {topics.length === 0 ? (
-        <p style={{ color: "#aaa" }}>토픽이 없거나 아직 임베딩이 없습니다.</p>
+        <p style={{ color: "#aaa" }}>토픽이 없습니다. 토픽 목록에서 토픽을 추가해보세요.</p>
+      ) : visibleTopics.length === 0 ? (
+        <p style={{ color: "#aaa" }}>현재 필터 조건에 해당하는 토픽이 없습니다.</p>
       ) : (
         <div style={{ background: "#fff", borderRadius: 12, padding: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
           <svg width={W} height={H}>
@@ -176,9 +220,33 @@ export default function GraphPage() {
               </button>
             </div>
             {related.length > 0 && (
-              <p style={{ margin: "10px 0 0", fontSize: 12, color: "#888" }}>
-                관련: {related.map((r) => topics.find((tp) => tp.id === r.id)?.title).filter(Boolean).join(", ")}
-              </p>
+              <div style={{ marginTop: 10 }}>
+                <span style={{ fontSize: 12, color: "#888" }}>관련 토픽 (클릭 시 탐색):</span>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                  {related.map((r) => {
+                    const rt = topics.find((tp) => tp.id === r.id);
+                    if (!rt) return null;
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={() => setSelected(r.id)}
+                        title={`유사도: ${(r.score * 100).toFixed(0)}%`}
+                        style={{
+                          padding: "3px 10px",
+                          background: "#e8f5e9",
+                          border: "1px solid #28a745",
+                          borderRadius: 10,
+                          fontSize: 12,
+                          color: "#155724",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {rt.title} <span style={{ opacity: 0.6 }}>{(r.score * 100).toFixed(0)}%</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             )}
           </div>
         );

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getSettings, saveSettings, type AiSettings } from "../../lib/api";
+import { getSettings, saveSettings, detectOllamaEmbeddingDimension, type AiSettings } from "../../lib/api";
 
 function detectOsLanguage(): string {
   const lang = navigator.language || "ko";
@@ -12,11 +12,15 @@ export default function Settings() {
   const [model, setModel] = useState("gpt-4o-mini");
   const [language, setLanguage] = useState<string>(detectOsLanguage());
   const [embeddingModel, setEmbeddingModel] = useState("text-embedding-3-small");
+  const [embeddingDimension, setEmbeddingDimension] = useState(1536);
   const [ollamaEndpoint, setOllamaEndpoint] = useState("http://localhost:11434");
   const [ollamaModel, setOllamaModel] = useState("");
   const [ollamaEmbeddingModel, setOllamaEmbeddingModel] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [reindexRequired, setReindexRequired] = useState(false);
+  const [detectingDim, setDetectingDim] = useState(false);
+  const [detectError, setDetectError] = useState<string | null>(null);
 
   useEffect(() => {
     getSettings()
@@ -25,11 +29,12 @@ export default function Settings() {
         setModel(s.model);
         setLanguage(s.language || detectOsLanguage());
         setEmbeddingModel(s.embeddingModel || "text-embedding-3-small");
+        setEmbeddingDimension(s.embeddingDimension || 1536);
         setOllamaEndpoint(s.ollamaEndpoint || "http://localhost:11434");
         setOllamaModel(s.ollamaModel || "");
         setOllamaEmbeddingModel(s.ollamaEmbeddingModel || "");
       })
-      .catch(() => setSettings({ model: "gpt-4o-mini", language: detectOsLanguage(), hasApiKey: false, embeddingModel: "text-embedding-3-small", ollamaEndpoint: "http://localhost:11434", ollamaModel: "", ollamaEmbeddingModel: "" }));
+      .catch(() => setSettings({ model: "gpt-4o-mini", language: detectOsLanguage(), hasApiKey: false, embeddingModel: "text-embedding-3-small", embeddingDimension: 1536, ollamaEndpoint: "http://localhost:11434", ollamaModel: "", ollamaEmbeddingModel: "" }));
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -37,10 +42,11 @@ export default function Settings() {
     setSaving(true);
     setSaved(false);
     try {
-      await saveSettings(apiKey, model, language, embeddingModel, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel);
-      setSettings((s) => s ? { ...s, hasApiKey: !!apiKey || (s.hasApiKey && !apiKey), model, language, embeddingModel, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel } : null);
+      const result = await saveSettings(apiKey, model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel);
+      setSettings((s) => s ? { ...s, hasApiKey: !!apiKey || (s.hasApiKey && !apiKey), model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel } : null);
       setApiKey("");
       setSaved(true);
+      setReindexRequired(result.reindexRequired);
       setTimeout(() => setSaved(false), 3000);
     } finally {
       setSaving(false);
@@ -50,6 +56,34 @@ export default function Settings() {
   return (
     <div style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
       <h2 style={{ margin: "0 0 24px", color: "#222" }}>설정</h2>
+
+      {reindexRequired && (
+        <div style={{
+          background: "#fff3cd",
+          border: "1px solid #ffc107",
+          borderRadius: 8,
+          padding: "12px 16px",
+          marginBottom: 16,
+          fontSize: 13,
+          color: "#856404",
+          display: "flex",
+          alignItems: "flex-start",
+          gap: 10,
+        }}>
+          <span style={{ fontSize: 16 }}>⚠️</span>
+          <div>
+            <strong>임베딩 모델 또는 차원이 변경되었습니다.</strong><br />
+            기존 임베딩 데이터와 차원이 달라 RAG 검색 및 토픽 유사도 결과가 부정확할 수 있습니다.
+            각 토픽의 Summary를 다시 생성하면 임베딩이 자동으로 갱신됩니다.
+            <button
+              onClick={() => setReindexRequired(false)}
+              style={{ marginLeft: 12, background: "none", border: "none", color: "#856404", cursor: "pointer", fontSize: 12, textDecoration: "underline", padding: 0 }}
+            >
+              닫기
+            </button>
+          </div>
+        </div>
+      )}
 
       <section style={{ background: "#fff", borderRadius: 8, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.08)", marginBottom: 24 }}>
         <h3 style={{ margin: "0 0 16px", fontSize: 16, color: "#333" }}>AI 제공자</h3>
@@ -227,14 +261,14 @@ export default function Settings() {
             />
           </div>
 
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
               Ollama 임베딩 모델
             </label>
             <input
               type="text"
               value={ollamaEmbeddingModel}
-              onChange={(e) => setOllamaEmbeddingModel(e.target.value)}
+              onChange={(e) => { setOllamaEmbeddingModel(e.target.value); setDetectError(null); }}
               placeholder="예: nomic-embed-text, mxbai-embed-large (비워두면 비활성화)"
               style={{
                 width: "100%",
@@ -249,6 +283,65 @@ export default function Settings() {
             <p style={{ margin: "6px 0 0", fontSize: 12, color: "#888" }}>
               API 키가 없을 때 임베딩(RAG 검색·토픽 유사도)에 사용됩니다.
             </p>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+              임베딩 차원 수
+            </label>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input
+                type="number"
+                value={embeddingDimension}
+                onChange={(e) => setEmbeddingDimension(parseInt(e.target.value, 10) || 1536)}
+                min={64}
+                max={8192}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  border: "1px solid #ddd",
+                  borderRadius: 6,
+                  fontSize: 14,
+                  boxSizing: "border-box",
+                }}
+              />
+              <button
+                type="button"
+                disabled={detectingDim || !ollamaEmbeddingModel}
+                onClick={async () => {
+                  setDetectingDim(true);
+                  setDetectError(null);
+                  try {
+                    const dim = await detectOllamaEmbeddingDimension(ollamaEndpoint, ollamaEmbeddingModel);
+                    setEmbeddingDimension(dim);
+                  } catch (e) {
+                    setDetectError(e instanceof Error ? e.message : "차원 감지 실패");
+                  } finally {
+                    setDetectingDim(false);
+                  }
+                }}
+                style={{
+                  padding: "8px 14px",
+                  background: detectingDim || !ollamaEmbeddingModel ? "#ccc" : "#6c63ff",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 6,
+                  fontSize: 13,
+                  cursor: detectingDim || !ollamaEmbeddingModel ? "not-allowed" : "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {detectingDim ? "감지 중..." : "자동 감지"}
+              </button>
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: 12, color: "#888" }}>
+              OpenAI text-embedding-3-small: 1536 / nomic-embed-text: 768 / mxbai-embed-large: 1024
+            </p>
+            {detectError && (
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#dc3545" }}>
+                ⚠ {detectError}
+              </p>
+            )}
           </div>
 
           <button

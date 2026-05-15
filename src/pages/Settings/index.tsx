@@ -1,6 +1,15 @@
 import { useEffect, useState } from "react";
 import { getSettings, saveSettings, detectOllamaEmbeddingDimension, type AiSettings } from "../../lib/api";
 
+function providerLabel(provider: string): string {
+  switch (provider) {
+    case "openai": return "OpenAI";
+    case "ollama": return "Ollama (로컬)";
+    case "local": return "lm-supply (로컬)";
+    default: return provider;
+  }
+}
+
 function detectOsLanguage(): string {
   const lang = navigator.language || "ko";
   return lang.startsWith("ko") ? "ko" : "en";
@@ -112,7 +121,7 @@ export default function Settings() {
               : "● 외부 AI 제공자 사용 중"}
           </div>
           <div style={{ color: "#777", fontSize: 12 }}>
-            채팅: <strong>{settings.chatProvider}</strong>　임베딩: <strong>{settings.embeddingProvider}</strong>
+            채팅: <strong>{providerLabel(settings.chatProvider)}</strong>　임베딩: <strong>{providerLabel(settings.embeddingProvider)}</strong>
           </div>
           <div style={{ color: "#999", fontSize: 11, marginTop: 4 }}>
             API 키 또는 Ollama 설정 시 해당 제공자가 우선 적용됩니다.

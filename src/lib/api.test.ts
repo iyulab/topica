@@ -50,4 +50,52 @@ describe("api.ts", () => {
     const dim = await detectOllamaEmbeddingDimension("http://localhost:11434", "nomic-embed-text");
     expect(dim).toBe(768);
   });
+
+  it("getSettings returns chatProvider and embeddingProvider fields", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        hasApiKey: false,
+        model: "gpt-4o-mini",
+        language: "ko",
+        embeddingModel: "text-embedding-3-small",
+        embeddingDimension: 1536,
+        ollamaEndpoint: "http://localhost:11434",
+        ollamaModel: "",
+        ollamaEmbeddingModel: "",
+        chatProvider: "local",
+        embeddingProvider: "local",
+      }),
+    });
+
+    const { getSettings } = await import("./api");
+    const settings = await getSettings();
+    expect(settings.chatProvider).toBe("local");
+    expect(settings.embeddingProvider).toBe("local");
+    expect(settings.hasApiKey).toBe(false);
+  });
+
+  it("getSettings chatProvider is openai when api key is set", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        hasApiKey: true,
+        model: "gpt-4o-mini",
+        language: "ko",
+        embeddingModel: "text-embedding-3-small",
+        embeddingDimension: 1536,
+        ollamaEndpoint: "http://localhost:11434",
+        ollamaModel: "",
+        ollamaEmbeddingModel: "",
+        chatProvider: "openai",
+        embeddingProvider: "openai",
+      }),
+    });
+
+    const { getSettings } = await import("./api");
+    const settings = await getSettings();
+    expect(settings.chatProvider).toBe("openai");
+    expect(settings.embeddingProvider).toBe("openai");
+    expect(settings.hasApiKey).toBe(true);
+  });
 });

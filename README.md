@@ -39,6 +39,8 @@ A built-in RAG chat lets you ask questions grounded in your own research docs. A
 | **Generation, not authoring** | You provide the topic; Topica builds the curriculum. Not a note-taking tool. |
 | **Open source, zero cost** | Quality learning tools should be accessible to everyone. |
 
+→ **[UI Design Principles](claudedocs/ui-principles.md)** — the UX guidelines that shape how Topica looks and feels.
+
 ---
 
 ## Scope

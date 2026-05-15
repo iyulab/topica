@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { createTopic, deleteTopic, getTopics, type Topic } from "../../lib/api";
 import { useTopicStore, useQueueStore } from "../../lib/store";
 import LevelBadge from "../../components/LevelBadge";
+import { TopicListSkeleton } from "../../components/SkeletonLoader";
 
 export default function TopicList() {
   const { topics, setTopics, addTopic, removeTopic } = useTopicStore();
@@ -12,6 +13,7 @@ export default function TopicList() {
   const [addLevel, setAddLevel] = useState(5);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     setLoading(true);
@@ -36,7 +38,8 @@ export default function TopicList() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (id: string, title: string) => {
+    if (!window.confirm(`"${title}" 토픽을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return;
     try {
       await deleteTopic(id);
       removeTopic(id);
@@ -47,7 +50,8 @@ export default function TopicList() {
 
   return (
     <div style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
-      <h2 style={{ margin: "0 0 20px", color: "#222" }}>토픽 목록</h2>
+      <h2 style={{ margin: "0 0 8px", color: "#222" }}>무엇을 배울까요?</h2>
+      <p style={{ margin: "0 0 20px", color: "#888", fontSize: 14 }}>주제를 입력하면 AI가 요약·강의·퀴즈·마인드맵을 만들어드립니다.</p>
 
       {/* Add form */}
       <div style={{
@@ -57,68 +61,73 @@ export default function TopicList() {
         marginBottom: 20,
         boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
       }}>
-        <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
-          <div style={{ flex: 1 }}>
-            <label style={{ fontSize: 12, color: "#666", display: "block", marginBottom: 4 }}>
-              학습할 토픽
-            </label>
-            <input
-              value={addTitle}
-              onChange={(e) => setAddTitle(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-              placeholder="예: Python 기초, 머신러닝 원리..."
-              style={{
-                width: "100%",
-                padding: "8px 12px",
-                border: "1px solid #ddd",
-                borderRadius: 6,
-                fontSize: 14,
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
-          <div>
-            <label style={{ fontSize: 12, color: "#666", display: "block", marginBottom: 4 }}>
-              레벨 (1-10)
-            </label>
-            <input
-              type="number"
-              min={1}
-              max={10}
-              value={addLevel}
-              onChange={(e) => setAddLevel(Number(e.target.value))}
-              style={{
-                width: 64,
-                padding: "8px 12px",
-                border: "1px solid #ddd",
-                borderRadius: 6,
-                fontSize: 14,
-              }}
-            />
-          </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            value={addTitle}
+            onChange={(e) => setAddTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            placeholder="학습할 주제를 입력하세요  예: Python 기초, 머신러닝 원리..."
+            style={{
+              flex: 1,
+              padding: "10px 14px",
+              border: "1px solid #ddd",
+              borderRadius: 6,
+              fontSize: 14,
+              boxSizing: "border-box",
+            }}
+          />
           <button
             onClick={handleAdd}
             disabled={adding || !addTitle.trim()}
             style={{
-              padding: "8px 20px",
+              padding: "10px 20px",
               background: adding ? "#aaa" : "#6c63ff",
               color: "#fff",
               border: "none",
               borderRadius: 6,
               cursor: adding ? "not-allowed" : "pointer",
               fontSize: 14,
-              height: 38,
+              whiteSpace: "nowrap",
             }}
           >
-            {adding ? "추가 중..." : "+ 추가"}
+            {adding ? "추가 중..." : "시작하기"}
           </button>
+        </div>
+        <div style={{ marginTop: 8 }}>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((v) => !v)}
+            style={{ background: "none", border: "none", color: "#6c63ff", fontSize: 12, cursor: "pointer", padding: 0 }}
+          >
+            {showAdvanced ? "▲ 옵션 숨기기" : "▼ 고급 옵션 (레벨 설정)"}
+          </button>
+          {showAdvanced && (
+            <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
+              <label style={{ fontSize: 12, color: "#666" }}>학습 레벨 (1–10)</label>
+              <input
+                type="number"
+                min={1}
+                max={10}
+                value={addLevel}
+                onChange={(e) => setAddLevel(Number(e.target.value))}
+                style={{
+                  width: 64,
+                  padding: "6px 10px",
+                  border: "1px solid #ddd",
+                  borderRadius: 6,
+                  fontSize: 14,
+                }}
+              />
+              <span style={{ fontSize: 12, color: "#999" }}>기본값 5 — AI가 자동으로 조정합니다</span>
+            </div>
+          )}
         </div>
         {error && <p style={{ color: "#e53935", fontSize: 12, margin: "8px 0 0" }}>{error}</p>}
       </div>
 
       {/* List */}
       {loading ? (
-        <p style={{ color: "#666", textAlign: "center" }}>불러오는 중...</p>
+        <TopicListSkeleton />
       ) : topics.length === 0 ? (
         <p style={{ color: "#999", textAlign: "center", padding: "40px 0" }}>
           아직 토픽이 없습니다. 위에서 추가해보세요!
@@ -127,7 +136,10 @@ export default function TopicList() {
         <TopicListWithQueue
           topics={topics}
           onOpen={(id) => navigate(`/topics/${id}/studio`)}
-          onDelete={handleDelete}
+          onDelete={(id) => {
+            const topic = topics.find((t) => t.id === id);
+            handleDelete(id, topic?.title ?? "이 토픽");
+          }}
         />
       )}
     </div>

@@ -9,6 +9,7 @@ import FlashcardViewer from "../../components/FlashcardViewer";
 import QuizViewer from "../../components/QuizViewer";
 import ChatPanel from "../../components/ChatPanel";
 import SurveyModal from "../../components/SurveyModal";
+import { ContentSkeleton } from "../../components/SkeletonLoader";
 
 export default function Studio() {
   const { topicId } = useParams<{ topicId: string }>();
@@ -63,7 +64,11 @@ export default function Studio() {
     return off;
   }, [topicId]);
 
-  if (loading) return <div style={{ padding: 24 }}>불러오는 중...</div>;
+  if (loading) return (
+    <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
+      <ContentSkeleton />
+    </div>
+  );
   if (!topic) return (
     <div style={{ padding: 24 }}>
       <p>토픽을 찾을 수 없습니다.</p>
@@ -230,7 +235,10 @@ export default function Studio() {
           fontSize: 14,
         }}>
           {tabs[activeTab].isGenerating ? (
-            "⏳ 생성 중... (완료 시 자동 업데이트됩니다)"
+            <div style={{ textAlign: "left" }}>
+              <div style={{ color: "#6c63ff", fontSize: 13, marginBottom: 12 }}>✦ AI가 콘텐츠를 생성하고 있습니다...</div>
+              <ContentSkeleton />
+            </div>
           ) : tabs[activeTab].isFailed ? (
             <div>
               <div style={{ color: "#d00", marginBottom: 8 }}>❌ 생성 실패</div>

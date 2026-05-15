@@ -63,6 +63,30 @@ public class SettingsEndpointTests(TestWebAppFactory factory) : IClassFixture<Te
     }
 
     [Fact]
+    public async Task Get_Settings_ReturnsChatProviderField()
+    {
+        var client = factory.CreateClient();
+        var res = await client.GetAsync("/settings");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(body);
+        Assert.True(doc.RootElement.TryGetProperty("chatProvider", out var cp));
+        Assert.Equal("local", cp.GetString());
+    }
+
+    [Fact]
+    public async Task Get_Settings_ReturnsEmbeddingProviderField()
+    {
+        var client = factory.CreateClient();
+        var res = await client.GetAsync("/settings");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(body);
+        Assert.True(doc.RootElement.TryGetProperty("embeddingProvider", out var ep));
+        Assert.Equal("local", ep.GetString());
+    }
+
+    [Fact]
     public async Task Get_OllamaEmbeddingDimension_WithoutModel_ReturnsBadRequest()
     {
         var client = factory.CreateClient();

@@ -109,6 +109,12 @@ export interface AiSettings {
   ollamaEmbeddingModel: string;
   chatProvider: "local" | "ollama" | "openai";
   embeddingProvider: "local" | "ollama" | "openai";
+  localChatLoading?: boolean;
+  localChatReady?: boolean;
+  localChatFailed?: boolean;
+  localEmbeddingLoading?: boolean;
+  localEmbeddingReady?: boolean;
+  localEmbeddingFailed?: boolean;
 }
 
 export async function getSettings(): Promise<AiSettings> {

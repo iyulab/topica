@@ -36,22 +36,27 @@ public static class GraphModule
             return Results.Ok(result);
         });
 
-        // Full graph: topics + their tags
-        app.MapGet("/graph", async (ApplicationDbContext db, CancellationToken ct) =>
+        // Full graph: topics + their tags + embedding presence
+        app.MapGet("/graph", async (ApplicationDbContext db, TopicEmbeddingService svc, CancellationToken ct) =>
         {
             var topics = await db.Topics
                 .Include(t => t.Tags)
-                .Select(t => new
+                .ToListAsync(ct);
+
+            var result = new List<object>(topics.Count);
+            foreach (var t in topics)
+            {
+                result.Add(new
                 {
                     t.Id,
                     t.Title,
                     t.UserLevel,
                     Tags = t.Tags.Select(tag => tag.Tag).ToList(),
-                    HasEmbedding = db.TopicEmbeddings.Any(e => e.TopicId == t.Id),
-                })
-                .ToListAsync(ct);
+                    HasEmbedding = await svc.HasEmbeddingAsync(t.Id, ct),
+                });
+            }
 
-            return Results.Ok(topics);
+            return Results.Ok(result);
         });
 
         return app;

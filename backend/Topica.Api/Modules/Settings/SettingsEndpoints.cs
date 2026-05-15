@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 using Topica.Api.Modules.AI;
@@ -22,9 +23,14 @@ public static class SettingsEndpoints
 
     public static IEndpointRouteBuilder MapSettingsEndpoints(this IEndpointRouteBuilder app)
     {
-        app.MapGet("/settings", (IOptionsMonitor<AiSettings> opts) =>
+        app.MapGet("/settings", (
+            IOptionsMonitor<AiSettings> opts,
+            [FromKeyedServices("local")] IChatClient localChat,
+            [FromKeyedServices("local")] FluxIndex.Core.Application.Interfaces.IEmbeddingService localEmbedding) =>
         {
             var s = opts.CurrentValue;
+            var chatStatus = localChat as ILmSupplyStatus;
+            var embeddingStatus = localEmbedding as ILmSupplyStatus;
             return Results.Ok(new
             {
                 model = s.Model,
@@ -41,6 +47,12 @@ public static class SettingsEndpoints
                 embeddingProvider = !string.IsNullOrWhiteSpace(s.ApiKey) ? "openai"
                                   : !string.IsNullOrWhiteSpace(s.OllamaEmbeddingModel) ? "ollama"
                                   : "local",
+                localChatLoading = chatStatus?.IsLoading ?? false,
+                localChatReady = chatStatus?.IsReady ?? false,
+                localChatFailed = chatStatus?.IsFailed ?? false,
+                localEmbeddingLoading = embeddingStatus?.IsLoading ?? false,
+                localEmbeddingReady = embeddingStatus?.IsReady ?? false,
+                localEmbeddingFailed = embeddingStatus?.IsFailed ?? false,
             });
         });
 
@@ -85,7 +97,7 @@ public static class SettingsEndpoints
                 var docs = await db.ResearchDocs.Where(d => d.TopicId == topicId).ToListAsync(ct);
                 if (docs.Count > 0)
                 {
-                    await rag.IndexTopicAsync(topicId, docs, db, ct);
+                    await rag.IndexTopicAsync(topicId, docs, ct);
                     ragCount++;
                 }
             }

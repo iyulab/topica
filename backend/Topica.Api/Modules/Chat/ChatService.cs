@@ -28,7 +28,7 @@ public class ChatService(ApplicationDbContext db, IChatClient chatClient, IOptio
         var history = await GetHistoryAsync(topicId, ct);
 
         var lang = options.CurrentValue.Language;
-        var ragChunks = await rag.SearchAsync(topicId, userMessage, db, top: 5, ct);
+        var ragChunks = await rag.SearchAsync(topicId, userMessage, top: 5, ct);
         var researchCtx = ragChunks.Count > 0
             ? PromptBuilder.RagContext(ragChunks, lang)
             : PromptBuilder.ResearchContext(topic.ResearchDocs.Take(5).ToList(), lang);

@@ -1,24 +1,21 @@
 using FluxIndex.Core.Application.Interfaces;
-using FluxIndex.Core.Application.Utilities;
+using FluxIndex.Core.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Options;
-using System.Runtime.InteropServices;
-using Topica.Api.Modules.AI;
-using Topica.Core.Entities;
 using Topica.Infrastructure.Data;
 
 namespace Topica.Api.Modules.Graph;
 
 public class TopicEmbeddingService(
     ApplicationDbContext db,
-    IOptionsMonitor<AiSettings> options,
     IEmbeddingService embeddingService,
+    IVectorStore vectorStore,
     ILogger<TopicEmbeddingService> logger)
 {
+    // DocumentId prefix to distinguish topic embeddings from RAG chunks
+    private const string Prefix = "topic:";
+
     public async Task EmbedTopicAsync(Guid topicId, CancellationToken ct = default)
     {
-        var settings = options.CurrentValue;
-
         var topic = await db.Topics
             .Include(t => t.Tags)
             .FirstOrDefaultAsync(t => t.Id == topicId, ct);
@@ -28,36 +25,27 @@ public class TopicEmbeddingService(
         var text = $"{topic.Title}. {topic.Description} {tagText}".Trim();
         if (string.IsNullOrWhiteSpace(text)) return;
 
-        var activeModel = !string.IsNullOrWhiteSpace(settings.ApiKey)
-            ? settings.EmbeddingModel
-            : !string.IsNullOrWhiteSpace(settings.OllamaEmbeddingModel)
-            ? settings.OllamaEmbeddingModel
-            : embeddingService.GetModelName();
-
         try
         {
             var vector = await embeddingService.GenerateEmbeddingAsync(text, ct);
-            var bytes = MemoryMarshal.Cast<float, byte>(vector).ToArray();
+            if (vector.Length == 0) return;
 
-            var existing = await db.TopicEmbeddings.FindAsync([topicId], ct);
-            if (existing is null)
+            var chunkId = $"{Prefix}{topicId}";
+            var chunk = new DocumentChunk
             {
-                db.TopicEmbeddings.Add(new TopicEmbedding
-                {
-                    TopicId = topicId,
-                    Vector = bytes,
-                    Model = activeModel,
-                    UpdatedAt = DateTime.UtcNow,
-                });
-            }
+                Id = chunkId,
+                DocumentId = chunkId,
+                Content = text,
+                Embedding = vector,
+                ChunkIndex = 0,
+                TotalChunks = 1,
+            };
+
+            if (await vectorStore.ExistsAsync(chunkId, ct))
+                await vectorStore.UpdateAsync(chunk, ct);
             else
-            {
-                existing.Vector = bytes;
-                existing.Model = activeModel;
-                existing.UpdatedAt = DateTime.UtcNow;
-            }
+                await vectorStore.StoreAsync(chunk, ct);
 
-            await db.SaveChangesAsync(ct);
             logger.LogInformation("Embedded topic {TopicId}", topicId);
         }
         catch (Exception ex)
@@ -66,27 +54,37 @@ public class TopicEmbeddingService(
         }
     }
 
+    public async Task DeleteTopicEmbeddingAsync(Guid topicId, CancellationToken ct = default)
+    {
+        var chunkId = $"{Prefix}{topicId}";
+        if (await vectorStore.ExistsAsync(chunkId, ct))
+            await vectorStore.DeleteAsync(chunkId, ct);
+    }
+
     public async Task<List<(Guid TopicId, float Score)>> FindSimilarAsync(Guid topicId, int top = 5, CancellationToken ct = default)
     {
-        var target = await db.TopicEmbeddings.FindAsync([topicId], ct);
-        if (target is null || target.Vector.Length == 0) return [];
+        var chunkId = $"{Prefix}{topicId}";
+        var target = await vectorStore.GetAsync(chunkId, ct);
+        if (target?.Embedding is null || target.Embedding.Length == 0) return [];
 
-        var targetVec = MemoryMarshal.Cast<byte, float>(target.Vector).ToArray();
+        // Overfetch: request all stored vectors to ensure all topic: chunks are included
+        // (the store is shared with rag: chunks; a small topK might return only rag: chunks)
+        var totalCount = await vectorStore.CountAsync(ct);
+        var results = await vectorStore.SearchAsync(target.Embedding, Math.Max(totalCount, top + 1), 0.5f, null, ct);
 
-        var all = await db.TopicEmbeddings
-            .Where(e => e.TopicId != topicId)
-            .ToListAsync(ct);
-
-        var expectedDim = targetVec.Length;
-        var dimMismatch = all.Where(e => MemoryMarshal.Cast<byte, float>(e.Vector).Length != expectedDim).ToList();
-        if (dimMismatch.Count > 0)
-            logger.LogWarning("FindSimilar: {Count} topic embedding(s) have dimension mismatch (expected {Dim}d). Re-embed after changing embedding model.", dimMismatch.Count, expectedDim);
-
-        return all
-            .Select(e => (e.TopicId, Score: VectorMathUtilities.CosineSimilarity(targetVec, MemoryMarshal.Cast<byte, float>(e.Vector).ToArray())))
-            .Where(x => x.Score > 0.5f)
-            .OrderByDescending(x => x.Score)
+        return results
+            .Where(r => r.DocumentId?.StartsWith(Prefix) == true && r.Id != chunkId)
             .Take(top)
+            .Select(r =>
+            {
+                var suffix = r.DocumentId![Prefix.Length..];
+                return Guid.TryParse(suffix, out var g) ? ((Guid, float)?) (g, r.Score ?? 0f) : null;
+            })
+            .Where(x => x.HasValue)
+            .Select(x => x!.Value)
             .ToList();
     }
+
+    public async Task<bool> HasEmbeddingAsync(Guid topicId, CancellationToken ct = default)
+        => await vectorStore.ExistsAsync($"{Prefix}{topicId}", ct);
 }

@@ -7,12 +7,16 @@ namespace Topica.Api.Modules.AI;
 
 // IChatClient wrapping LMSupply.Generator.
 // LoadAsync starts on construction; returns "준비 중" message until model is ready.
-public sealed class LMSupplyChatAdapter : IChatClient
+public sealed class LMSupplyChatAdapter : IChatClient, ILmSupplyStatus
 {
     private readonly Task<IGeneratorModel?> _loadTask;
     private readonly ILogger<LMSupplyChatAdapter> _logger;
 
     public ChatClientMetadata Metadata => new("local", null, null);
+
+    public bool IsLoading => !_loadTask.IsCompleted;
+    public bool IsReady => _loadTask.IsCompletedSuccessfully && _loadTask.Result != null;
+    public bool IsFailed => _loadTask.IsFaulted;
 
     public LMSupplyChatAdapter(ILogger<LMSupplyChatAdapter> logger)
     {

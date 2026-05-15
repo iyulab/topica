@@ -12,11 +12,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<ContentQueueItem> ContentQueueItems => Set<ContentQueueItem>();
     public DbSet<TopicTag> TopicTags => Set<TopicTag>();
     public DbSet<TopicEdge> TopicEdges => Set<TopicEdge>();
-    public DbSet<TopicEmbedding> TopicEmbeddings => Set<TopicEmbedding>();
     public DbSet<EvalSession> EvalSessions => Set<EvalSession>();
     public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
     public DbSet<AppNotification> Notifications => Set<AppNotification>();
-    public DbSet<ResearchChunkEmbedding> ResearchChunkEmbeddings => Set<ResearchChunkEmbedding>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,9 +35,6 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
             .WithMany(t => t.IncomingEdges)
             .HasForeignKey(e => e.ToTopicId)
             .OnDelete(DeleteBehavior.Restrict);
-
-        modelBuilder.Entity<TopicEmbedding>()
-            .HasKey(e => e.TopicId);
 
         // ContentQueueItem: Pending/Processing 중복 방지 partial index
         modelBuilder.Entity<ContentQueueItem>()

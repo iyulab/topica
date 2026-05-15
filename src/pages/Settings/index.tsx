@@ -33,7 +33,7 @@ export default function Settings() {
   const [detectingDim, setDetectingDim] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const loadSettings = () =>
     getSettings()
       .then((s) => {
         setSettings(s);
@@ -44,20 +44,41 @@ export default function Settings() {
         setOllamaEndpoint(s.ollamaEndpoint || "http://localhost:11434");
         setOllamaModel(s.ollamaModel || "");
         setOllamaEmbeddingModel(s.ollamaEmbeddingModel || "");
+        return s;
       })
-      .catch(() => setSettings({
-        model: "gpt-4o-mini",
-        language: detectOsLanguage(),
-        hasApiKey: false,
-        embeddingModel: "text-embedding-3-small",
-        embeddingDimension: 1536,
-        ollamaEndpoint: "http://localhost:11434",
-        ollamaModel: "",
-        ollamaEmbeddingModel: "",
-        chatProvider: "local",
-        embeddingProvider: "local",
-      }));
+      .catch(() => {
+        const fallback: AiSettings = {
+          model: "gpt-4o-mini",
+          language: detectOsLanguage(),
+          hasApiKey: false,
+          embeddingModel: "text-embedding-3-small",
+          embeddingDimension: 1536,
+          ollamaEndpoint: "http://localhost:11434",
+          ollamaModel: "",
+          ollamaEmbeddingModel: "",
+          chatProvider: "local",
+          embeddingProvider: "local",
+        };
+        setSettings(fallback);
+        return fallback;
+      });
+
+  useEffect(() => {
+    loadSettings();
   }, []);
+
+  // Poll model status while local models are loading
+  useEffect(() => {
+    if (!settings) return;
+    const isLocalProvider = settings.chatProvider === "local" || settings.embeddingProvider === "local";
+    const isStillLoading = settings.localChatLoading || settings.localEmbeddingLoading;
+    if (!isLocalProvider || !isStillLoading) return;
+
+    const id = setInterval(() => {
+      getSettings().then((s) => setSettings((prev) => prev ? { ...prev, ...s } : s));
+    }, 3000);
+    return () => clearInterval(id);
+  }, [settings?.localChatLoading, settings?.localEmbeddingLoading, settings?.chatProvider, settings?.embeddingProvider]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -91,6 +112,9 @@ export default function Settings() {
   };
 
   const isFullyLocal = !!settings && settings.chatProvider === "local" && settings.embeddingProvider === "local";
+  const isLocalModelLoading = isFullyLocal && (settings.localChatLoading || settings.localEmbeddingLoading);
+  const isLocalModelReady = isFullyLocal && settings.localChatReady && settings.localEmbeddingReady;
+  const isLocalModelFailed = isFullyLocal && (settings.localChatFailed || settings.localEmbeddingFailed);
 
   return (
     <div style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
@@ -125,6 +149,22 @@ export default function Settings() {
           <div style={{ color: "#777", fontSize: 12 }}>
             채팅: <strong>{providerLabel(settings.chatProvider)}</strong>　임베딩: <strong>{providerLabel(settings.embeddingProvider)}</strong>
           </div>
+          {isLocalModelLoading && (
+            <div style={{ color: "#9e97e8", fontSize: 12, marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", border: "2px solid #9e97e8", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} />
+              로컬 모델 로딩 중... (초기 실행 시 다운로드 시간이 필요합니다)
+            </div>
+          )}
+          {isLocalModelReady && (
+            <div style={{ color: "#28a745", fontSize: 12, marginTop: 6 }}>
+              ✓ 로컬 모델 준비 완료
+            </div>
+          )}
+          {isLocalModelFailed && (
+            <div style={{ color: "#dc3545", fontSize: 12, marginTop: 6 }}>
+              ⚠ 로컬 모델 로드 실패 — 로그를 확인하세요
+            </div>
+          )}
           <div style={{ color: "#999", fontSize: 11, marginTop: 4 }}>
             API 키 또는 Ollama 설정 시 해당 제공자가 우선 적용됩니다.
           </div>

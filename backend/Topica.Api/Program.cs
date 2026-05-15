@@ -1,3 +1,4 @@
+using FluxIndex.Storage.SQLite;
 using Microsoft.EntityFrameworkCore;
 using System.Net.WebSockets;
 using System.Text.Json;
@@ -31,8 +32,11 @@ var dbPath = Path.Combine(
 
 Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
 
+var vectorDbPath = Path.Combine(Path.GetDirectoryName(dbPath)!, "topica_vectors.db");
+
 builder.Services.AddDbContext<ApplicationDbContext>(opt =>
     opt.UseSqlite($"Data Source={dbPath}"));
+builder.Services.AddSQLiteVectorStore(vectorDbPath);
 
 builder.Services.AddTopicModule();
 builder.Services.AddResearchModule();

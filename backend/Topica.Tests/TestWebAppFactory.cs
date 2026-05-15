@@ -1,3 +1,6 @@
+using FluxIndex.Core.Application.Interfaces;
+using FluxIndex.Core.Domain.Entities;
+using FluxIndex.Core.Domain.ValueObjects;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +13,7 @@ using Topica.Api.Modules.Queue;
 using Topica.Api.Modules.Research;
 using Topica.Api.Modules.Settings;
 using Topica.Infrastructure.Data;
-using WebLookup;
+using WebSearchResult = WebLookup.SearchResult;
 
 namespace Topica.Tests;
 
@@ -74,6 +77,17 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
             if (writableOpts is not null) services.Remove(writableOpts);
             services.AddSingleton<IWritableOptions<AiSettings>>(
                 new InMemoryWritableOptions<AiSettings>(new AiSettings()));
+
+            // Replace SQLite vector store with no-op stub for tests (no DB setup needed)
+            var vectorStoreDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IVectorStore));
+            if (vectorStoreDescriptor is not null) services.Remove(vectorStoreDescriptor);
+            // Also remove migration/hosted services registered by AddSQLiteVectorStore
+            var sqliteHostedServices = services
+                .Where(d => d.ServiceType == typeof(IHostedService) &&
+                            d.ImplementationType?.FullName?.Contains("FluxIndex") == true)
+                .ToList();
+            foreach (var d in sqliteHostedServices) services.Remove(d);
+            services.AddScoped<IVectorStore>(_ => new NoOpVectorStore());
         });
     }
 
@@ -99,8 +113,8 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
 
     private sealed class NoOpWebResearcher : IWebResearcher
     {
-        public Task<IReadOnlyList<SearchResult>> SearchAsync(string query, CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<SearchResult>>([]);
+        public Task<IReadOnlyList<WebSearchResult>> SearchAsync(string query, CancellationToken ct = default)
+            => Task.FromResult<IReadOnlyList<WebSearchResult>>([]);
     }
 
     private sealed class NoOpLocalEmbeddingService
@@ -131,5 +145,30 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
             applyChanges(Value);
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class NoOpVectorStore : IVectorStore
+    {
+        public string? ResolvedStoreName => null;
+        public int? DetectedDimension => null;
+        public EmbeddingIdentity? BoundIdentity => null;
+        public void BindIdentity(EmbeddingIdentity identity) { }
+        public Task<bool> VerifyHealthAsync(CancellationToken ct = default) => Task.FromResult(true);
+        public Task<string> StoreAsync(DocumentChunk chunk, CancellationToken ct = default) => Task.FromResult(chunk.Id);
+        public Task<IEnumerable<string>> StoreBatchAsync(IEnumerable<DocumentChunk> chunks, CancellationToken ct = default) => Task.FromResult(chunks.Select(c => c.Id));
+        public Task<DocumentChunk?> GetAsync(string id, CancellationToken ct = default) => Task.FromResult<DocumentChunk?>(null);
+        public Task<IEnumerable<DocumentChunk>> GetByDocumentIdAsync(string documentId, CancellationToken ct = default) => Task.FromResult(Enumerable.Empty<DocumentChunk>());
+        public Task<IEnumerable<DocumentChunk>> GetChunksByIdsAsync(IEnumerable<string> ids, CancellationToken ct = default) => Task.FromResult(Enumerable.Empty<DocumentChunk>());
+        public Task<IEnumerable<DocumentChunk>> SearchAsync(float[] queryEmbedding, int topK, float minScore, Dictionary<string, object>? filters, CancellationToken ct = default) => Task.FromResult(Enumerable.Empty<DocumentChunk>());
+        public Task<bool> DeleteAsync(string id, CancellationToken ct = default) => Task.FromResult(true);
+        public Task<bool> DeleteByDocumentIdAsync(string documentId, CancellationToken ct = default) => Task.FromResult(true);
+        public Task<bool> ExistsAsync(string id, CancellationToken ct = default) => Task.FromResult(false);
+        public Task<DocumentChunk?> GetByIdAsync(string id, CancellationToken ct = default) => Task.FromResult<DocumentChunk?>(null);
+        public Task<bool> UpdateAsync(DocumentChunk chunk, CancellationToken ct = default) => Task.FromResult(true);
+        public Task<int> CountAsync(CancellationToken ct = default) => Task.FromResult(0);
+        public Task<int> GetCountAsync(CancellationToken ct = default) => Task.FromResult(0);
+        public Task ClearAsync(CancellationToken ct = default) => Task.CompletedTask;
+        public Task<int> GetDistinctDocumentCountAsync(CancellationToken ct = default) => Task.FromResult(0);
+        public Task<bool> HasVectorsForDocumentAsync(string documentId, CancellationToken ct = default) => Task.FromResult(false);
     }
 }

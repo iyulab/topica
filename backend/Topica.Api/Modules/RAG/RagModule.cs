@@ -4,7 +4,7 @@ public static class RagModule
 {
     public static IServiceCollection AddRagModule(this IServiceCollection services)
     {
-        services.AddSingleton<RagService>();
+        services.AddScoped<RagService>();
         return services;
     }
 }

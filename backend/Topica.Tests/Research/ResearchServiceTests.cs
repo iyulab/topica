@@ -1,4 +1,5 @@
 using FluxIndex.Core.Application.Interfaces;
+using FluxIndex.Core.Domain.Entities;
 using FluxIndex.Core.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -17,7 +18,32 @@ public class ResearchServiceTests
     private static RagService CreateNullRagService()
     {
         var monitor = new StubOptionsMonitor(new AiSettings());
-        return new RagService(monitor, new StubEmbeddingService(), NullLogger<RagService>.Instance);
+        return new RagService(new StubEmbeddingService(), new NoOpVectorStore(), NullLogger<RagService>.Instance);
+    }
+
+    private sealed class NoOpVectorStore : IVectorStore
+    {
+        public string? ResolvedStoreName => null;
+        public int? DetectedDimension => null;
+        public EmbeddingIdentity? BoundIdentity => null;
+        public void BindIdentity(EmbeddingIdentity identity) { }
+        public Task<bool> VerifyHealthAsync(CancellationToken ct = default) => Task.FromResult(true);
+        public Task<string> StoreAsync(DocumentChunk chunk, CancellationToken ct = default) => Task.FromResult(chunk.Id);
+        public Task<IEnumerable<string>> StoreBatchAsync(IEnumerable<DocumentChunk> chunks, CancellationToken ct = default) => Task.FromResult(chunks.Select(c => c.Id));
+        public Task<DocumentChunk?> GetAsync(string id, CancellationToken ct = default) => Task.FromResult<DocumentChunk?>(null);
+        public Task<IEnumerable<DocumentChunk>> GetByDocumentIdAsync(string documentId, CancellationToken ct = default) => Task.FromResult(Enumerable.Empty<DocumentChunk>());
+        public Task<IEnumerable<DocumentChunk>> GetChunksByIdsAsync(IEnumerable<string> ids, CancellationToken ct = default) => Task.FromResult(Enumerable.Empty<DocumentChunk>());
+        public Task<IEnumerable<DocumentChunk>> SearchAsync(float[] queryEmbedding, int topK, float minScore, Dictionary<string, object>? filters, CancellationToken ct = default) => Task.FromResult(Enumerable.Empty<DocumentChunk>());
+        public Task<bool> DeleteAsync(string id, CancellationToken ct = default) => Task.FromResult(true);
+        public Task<bool> DeleteByDocumentIdAsync(string documentId, CancellationToken ct = default) => Task.FromResult(true);
+        public Task<bool> ExistsAsync(string id, CancellationToken ct = default) => Task.FromResult(false);
+        public Task<DocumentChunk?> GetByIdAsync(string id, CancellationToken ct = default) => Task.FromResult<DocumentChunk?>(null);
+        public Task<bool> UpdateAsync(DocumentChunk chunk, CancellationToken ct = default) => Task.FromResult(true);
+        public Task<int> CountAsync(CancellationToken ct = default) => Task.FromResult(0);
+        public Task<int> GetCountAsync(CancellationToken ct = default) => Task.FromResult(0);
+        public Task ClearAsync(CancellationToken ct = default) => Task.CompletedTask;
+        public Task<int> GetDistinctDocumentCountAsync(CancellationToken ct = default) => Task.FromResult(0);
+        public Task<bool> HasVectorsForDocumentAsync(string documentId, CancellationToken ct = default) => Task.FromResult(false);
     }
 
     private sealed class StubOptionsMonitor(AiSettings value) : IOptionsMonitor<AiSettings>

@@ -15,7 +15,6 @@ public class Topic
     public ICollection<TopicTag> Tags { get; set; } = [];
     public ICollection<TopicEdge> OutgoingEdges { get; set; } = [];
     public ICollection<TopicEdge> IncomingEdges { get; set; } = [];
-    public TopicEmbedding? Embedding { get; set; }
     public ICollection<EvalSession> EvalSessions { get; set; } = [];
     public ICollection<ChatSession> ChatSessions { get; set; } = [];
 }

@@ -35,7 +35,7 @@ public class ResearchService(ApplicationDbContext db, IWebResearcher researcher,
             db.ResearchDocs.AddRange(docs);
             await db.SaveChangesAsync(ct);
 
-            await rag.IndexTopicAsync(topicId, docs, db, ct);
+            await rag.IndexTopicAsync(topicId, docs, ct);
         }
     }
 }

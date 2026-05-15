@@ -6,7 +6,7 @@ namespace Topica.Api.Modules.AI;
 
 // IEmbeddingService wrapping LMSupply.Embedder.
 // LoadAsync starts on construction; inference calls return empty until model is ready.
-public sealed class LMSupplyEmbeddingAdapter : IEmbeddingService
+public sealed class LMSupplyEmbeddingAdapter : IEmbeddingService, ILmSupplyStatus
 {
     private readonly Task<IEmbeddingModel?> _loadTask;
     private readonly ILogger<LMSupplyEmbeddingAdapter> _logger;
@@ -44,6 +44,10 @@ public sealed class LMSupplyEmbeddingAdapter : IEmbeddingService
         if (model is null) return [];
         return await model.EmbedAsync(texts.ToList(), ct);
     }
+
+    public bool IsLoading => !_loadTask.IsCompleted;
+    public bool IsReady => _loadTask.IsCompletedSuccessfully && _loadTask.Result != null;
+    public bool IsFailed => _loadTask.IsFaulted;
 
     public int GetEmbeddingDimension()
         => _loadTask.IsCompletedSuccessfully && _loadTask.Result is { } m ? m.Dimensions : 0;

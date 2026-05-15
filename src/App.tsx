@@ -7,7 +7,7 @@ import { useAppStore, useQueueStore } from "./lib/store";
 
 export default function App() {
   const { setConnected } = useAppStore();
-  const { startItem, finishItem } = useQueueStore();
+  const { startItem, finishItem, failItem } = useQueueStore();
 
   useEffect(() => {
     let cancelled = false;
@@ -39,11 +39,13 @@ export default function App() {
     return topicaWs.on((msg: WsMessage) => {
       if (msg.type === "queue_started") {
         startItem({ topicId: msg.topicId as string, contentType: msg.contentType as string });
-      } else if (msg.type === "content_ready" || msg.type === "queue_failed") {
+      } else if (msg.type === "content_ready") {
         finishItem(msg.topicId as string, msg.contentType as string);
+      } else if (msg.type === "queue_failed") {
+        failItem(msg.topicId as string, msg.contentType as string, (msg.errorMessage as string) ?? "생성 실패");
       }
     });
-  }, [startItem, finishItem]);
+  }, [startItem, finishItem, failItem]);
 
   return <RouterProvider router={router} />;
 }

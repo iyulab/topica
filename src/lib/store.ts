@@ -6,6 +6,12 @@ export interface QueueItem {
   contentType: string;
 }
 
+export interface FailedItem {
+  topicId: string;
+  contentType: string;
+  errorMessage: string;
+}
+
 interface AppStore {
   isConnected: boolean;
   setConnected: (v: boolean) => void;
@@ -64,20 +70,38 @@ export const useContentStore = create<ContentStore>((set) => ({
 
 interface QueueStore {
   activeItems: QueueItem[];
+  failedItems: FailedItem[];
   startItem: (item: QueueItem) => void;
   finishItem: (topicId: string, contentType: string) => void;
+  failItem: (topicId: string, contentType: string, errorMessage: string) => void;
 }
 
 export const useQueueStore = create<QueueStore>((set) => ({
   activeItems: [],
+  failedItems: [],
   startItem: (item) =>
     set((s) => ({
       activeItems: [...s.activeItems, item],
+      failedItems: s.failedItems.filter(
+        (f) => !(f.topicId === item.topicId && f.contentType === item.contentType)
+      ),
     })),
   finishItem: (topicId, contentType) =>
     set((s) => ({
       activeItems: s.activeItems.filter(
         (i) => !(i.topicId === topicId && i.contentType === contentType)
       ),
+    })),
+  failItem: (topicId, contentType, errorMessage) =>
+    set((s) => ({
+      activeItems: s.activeItems.filter(
+        (i) => !(i.topicId === topicId && i.contentType === contentType)
+      ),
+      failedItems: [
+        ...s.failedItems.filter(
+          (f) => !(f.topicId === topicId && f.contentType === contentType)
+        ),
+        { topicId, contentType, errorMessage },
+      ],
     })),
 }));

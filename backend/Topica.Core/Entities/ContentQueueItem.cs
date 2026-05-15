@@ -14,6 +14,8 @@ public class ContentQueueItem
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? StartedAt { get; set; }
     public DateTime? CompletedAt { get; set; }
+    public DateTime? FailedAt { get; set; }
+    public string? ErrorMessage { get; set; }
 
     public Topic Topic { get; set; } = null!;
 }

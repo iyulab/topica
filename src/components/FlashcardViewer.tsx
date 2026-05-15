@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { extractJson } from "../lib/jsonUtils";
 
 interface Card {
   front: string;
@@ -14,7 +13,8 @@ export default function FlashcardViewer({ body }: Props) {
   const [flipped, setFlipped] = useState<Set<number>>(new Set());
   const [current, setCurrent] = useState(0);
 
-  const cards = extractJson<Card[]>(body) ?? [];
+  let cards: Card[] = [];
+  try { cards = JSON.parse(body) as Card[]; } catch { /* ignore */ }
   if (cards.length === 0 && body.trim()) {
     return <p style={{ color: "#aaa" }}>플래시카드 데이터를 파싱할 수 없습니다.</p>;
   }

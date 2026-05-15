@@ -9,6 +9,11 @@ namespace Topica.Api.Modules.Contents;
 
 public class QuizGenerator(IChatClient chatClient, IOptionsMonitor<AiSettings> options) : IContentGenerator
 {
+    private static readonly ChatOptions JsonOptions = new()
+    {
+        ResponseFormat = ChatResponseFormat.Json,
+    };
+
     public ContentType Type => ContentType.Quiz;
 
     public async Task<Content> GenerateAsync(
@@ -20,7 +25,7 @@ public class QuizGenerator(IChatClient chatClient, IOptionsMonitor<AiSettings> o
         var lang = options.CurrentValue.Language;
         var ctx = PromptBuilder.ResearchContext(research, lang);
         var prompt = PromptBuilder.Quiz(topic, ctx, level, lang);
-        var response = await chatClient.GetResponseAsync(prompt, cancellationToken: ct);
+        var response = await chatClient.GetResponseAsync(prompt, JsonOptions, ct);
 
         return new Content
         {

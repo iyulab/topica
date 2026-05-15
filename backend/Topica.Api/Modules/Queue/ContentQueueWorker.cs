@@ -96,18 +96,20 @@ public class ContentQueueWorker(
         catch (Exception ex)
         {
             logger.LogError(ex, "Content generation failed for topic {TopicId} type {Type}", req.TopicId, req.Type);
+            var errorMessage = ex.Message;
             await wsHub.BroadcastAsync(new
             {
                 type = "queue_failed",
                 topicId = req.TopicId,
                 contentType = req.Type.ToString(),
+                errorMessage,
             }, CancellationToken.None);
 
             try
             {
                 await using var errScope = services.CreateAsyncScope();
                 var errDb = errScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-                await MarkFailedAsync(errDb, req, CancellationToken.None);
+                await MarkFailedAsync(errDb, req, errorMessage, CancellationToken.None);
             }
             catch { /* best-effort */ }
         }
@@ -135,7 +137,7 @@ public class ContentQueueWorker(
         await db.SaveChangesAsync(ct);
     }
 
-    private static async Task MarkFailedAsync(ApplicationDbContext db, QueueRequest req, CancellationToken ct)
+    private static async Task MarkFailedAsync(ApplicationDbContext db, QueueRequest req, string errorMessage, CancellationToken ct)
     {
         var item = await db.ContentQueueItems
             .Where(q => q.TopicId == req.TopicId && q.Type == req.Type && q.Level == req.Level &&
@@ -143,7 +145,8 @@ public class ContentQueueWorker(
             .FirstOrDefaultAsync(ct);
         if (item is null) return;
         item.Status = QueueStatus.Failed;
-        item.CompletedAt = DateTime.UtcNow;
+        item.FailedAt = DateTime.UtcNow;
+        item.ErrorMessage = errorMessage;
         await db.SaveChangesAsync(ct);
     }
 }

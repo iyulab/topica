@@ -90,6 +90,7 @@ Microsoft.Extensions.AI, WebLookup, Zustand
 | Phase 3.5: RAG + Survey | ✅ Done | Embedding-based RAG · SSE survey streaming |
 | Phase 4: Knowledge Graph | ✅ Done | EvalSession · tags · embeddings · graph UI |
 | Phase 5: Stabilization | ✅ Done | 30/30 tests · force layout · level recommendation · queue persistence · installer |
+| Phase 6: CI + Resilience | ✅ Done | CI workflow (push/PR) · WS exponential back-off reconnect · content regeneration UX · 33/33 tests |
 
 Pre-built releases (Windows NSIS/MSI, macOS dmg, Linux AppImage/deb) are published on [GitHub Releases](https://github.com/iyulab/topica/releases).
 

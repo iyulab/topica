@@ -1,6 +1,7 @@
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
 using OpenAI;
+using System.ClientModel;
 
 namespace Topica.Api.Modules.AI;
 
@@ -15,6 +16,12 @@ public class DynamicChatClient(IOptionsMonitor<AiSettings> options) : IChatClien
         var settings = options.CurrentValue;
         if (!string.IsNullOrWhiteSpace(settings.ApiKey))
             return new OpenAIClient(settings.ApiKey).GetChatClient(settings.Model).AsIChatClient();
+        if (!string.IsNullOrWhiteSpace(settings.OllamaModel))
+        {
+            var endpoint = new Uri(settings.OllamaEndpoint.TrimEnd('/') + "/v1");
+            return new OpenAIClient(new ApiKeyCredential("ollama"), new OpenAIClientOptions { Endpoint = endpoint })
+                .GetChatClient(settings.OllamaModel).AsIChatClient();
+        }
         return new StubChatClient();
     }
 

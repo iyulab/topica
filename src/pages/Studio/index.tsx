@@ -24,8 +24,9 @@ export default function Studio() {
   const [tags, setTags] = useState<string[]>([]);
   const [relatedTopics, setRelatedTopics] = useState<RelatedTopic[]>([]);
   const [recommendation, setRecommendation] = useState<LevelRecommendation | null>(null);
-  const { activeItems } = useQueueStore();
+  const { activeItems, failedItems } = useQueueStore();
   const topicActiveItems = activeItems.filter((i) => i.topicId === topicId);
+  const topicFailedItems = failedItems.filter((f) => f.topicId === topicId);
 
   useEffect(() => {
     if (!topicId) return;
@@ -77,12 +78,12 @@ export default function Studio() {
   const mindmap = contents.find((c) => c.type === 4);
 
   const tabs = [
-    { label: "요약", content: summary, isGenerating: topicActiveItems.some((i) => i.contentType === "Summary"), renderer: "markdown" },
-    { label: "강해", content: lecture, isGenerating: topicActiveItems.some((i) => i.contentType === "Lecture"), renderer: "markdown" },
-    { label: "플래시카드", content: flashcard, isGenerating: topicActiveItems.some((i) => i.contentType === "Flashcard"), renderer: "flashcard" },
-    { label: "퀴즈", content: quiz, isGenerating: topicActiveItems.some((i) => i.contentType === "Quiz"), renderer: "quiz" },
-    { label: "마인드맵", content: mindmap, isGenerating: topicActiveItems.some((i) => i.contentType === "Mindmap"), renderer: "markdown" },
-    { label: "채팅", content: null, isGenerating: false, renderer: "chat" },
+    { label: "요약", content: summary, isGenerating: topicActiveItems.some((i) => i.contentType === "Summary"), isFailed: topicFailedItems.find((f) => f.contentType === "Summary"), renderer: "markdown" },
+    { label: "강해", content: lecture, isGenerating: topicActiveItems.some((i) => i.contentType === "Lecture"), isFailed: topicFailedItems.find((f) => f.contentType === "Lecture"), renderer: "markdown" },
+    { label: "플래시카드", content: flashcard, isGenerating: topicActiveItems.some((i) => i.contentType === "Flashcard"), isFailed: topicFailedItems.find((f) => f.contentType === "Flashcard"), renderer: "flashcard" },
+    { label: "퀴즈", content: quiz, isGenerating: topicActiveItems.some((i) => i.contentType === "Quiz"), isFailed: topicFailedItems.find((f) => f.contentType === "Quiz"), renderer: "quiz" },
+    { label: "마인드맵", content: mindmap, isGenerating: topicActiveItems.some((i) => i.contentType === "Mindmap"), isFailed: topicFailedItems.find((f) => f.contentType === "Mindmap"), renderer: "markdown" },
+    { label: "채팅", content: null, isGenerating: false, isFailed: undefined, renderer: "chat" },
   ];
 
   return (
@@ -154,7 +155,7 @@ export default function Studio() {
             }}
           >
             {tab.label}{" "}
-            {tab.renderer === "chat" ? "💬" : tab.isGenerating ? "⏳" : tab.content ? "✓" : "—"}
+            {tab.renderer === "chat" ? "💬" : tab.isGenerating ? "⏳" : tab.isFailed ? "⚠️" : tab.content ? "✓" : "—"}
           </button>
         ))}
         {tabs[activeTab].renderer !== "chat" && topicId && (
@@ -228,9 +229,38 @@ export default function Studio() {
           color: "#aaa",
           fontSize: 14,
         }}>
-          {tabs[activeTab].isGenerating
-            ? "⏳ 생성 중... (완료 시 자동 업데이트됩니다)"
-            : "아직 생성되지 않았습니다."}
+          {tabs[activeTab].isGenerating ? (
+            "⏳ 생성 중... (완료 시 자동 업데이트됩니다)"
+          ) : tabs[activeTab].isFailed ? (
+            <div>
+              <div style={{ color: "#d00", marginBottom: 8 }}>❌ 생성 실패</div>
+              <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>{tabs[activeTab].isFailed!.errorMessage}</div>
+              <button
+                onClick={async () => {
+                  if (!topicId) return;
+                  setRegenerating(activeTab);
+                  try {
+                    const updated = await generateContent(topicId, activeTab, topic!.userLevel);
+                    setContents((cs) => {
+                      const filtered = cs.filter((c) => c.type !== activeTab);
+                      return [...filtered, updated];
+                    });
+                  } finally {
+                    setRegenerating(null);
+                  }
+                }}
+                disabled={regenerating === activeTab}
+                style={{
+                  padding: "6px 16px", background: "#fff3f3", border: "1px solid #d00",
+                  borderRadius: 6, color: "#d00", cursor: "pointer", fontSize: 13,
+                }}
+              >
+                {regenerating === activeTab ? "⏳" : "⚠️"} 재시도
+              </button>
+            </div>
+          ) : (
+            "아직 생성되지 않았습니다."
+          )}
         </div>
       )}
 

@@ -12,6 +12,8 @@ export default function Settings() {
   const [model, setModel] = useState("gpt-4o-mini");
   const [language, setLanguage] = useState<string>(detectOsLanguage());
   const [embeddingModel, setEmbeddingModel] = useState("text-embedding-3-small");
+  const [ollamaEndpoint, setOllamaEndpoint] = useState("http://localhost:11434");
+  const [ollamaModel, setOllamaModel] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -22,8 +24,10 @@ export default function Settings() {
         setModel(s.model);
         setLanguage(s.language || detectOsLanguage());
         setEmbeddingModel(s.embeddingModel || "text-embedding-3-small");
+        setOllamaEndpoint(s.ollamaEndpoint || "http://localhost:11434");
+        setOllamaModel(s.ollamaModel || "");
       })
-      .catch(() => setSettings({ model: "gpt-4o-mini", language: detectOsLanguage(), hasApiKey: false, embeddingModel: "text-embedding-3-small" }));
+      .catch(() => setSettings({ model: "gpt-4o-mini", language: detectOsLanguage(), hasApiKey: false, embeddingModel: "text-embedding-3-small", ollamaEndpoint: "http://localhost:11434", ollamaModel: "" }));
   }, []);
 
   const handleSave = async (e: React.FormEvent) => {
@@ -31,8 +35,8 @@ export default function Settings() {
     setSaving(true);
     setSaved(false);
     try {
-      await saveSettings(apiKey, model, language, embeddingModel);
-      setSettings((s) => s ? { ...s, hasApiKey: !!apiKey || (s.hasApiKey && !apiKey), model, language, embeddingModel } : null);
+      await saveSettings(apiKey, model, language, embeddingModel, ollamaEndpoint, ollamaModel);
+      setSettings((s) => s ? { ...s, hasApiKey: !!apiKey || (s.hasApiKey && !apiKey), model, language, embeddingModel, ollamaEndpoint, ollamaModel } : null);
       setApiKey("");
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
@@ -170,6 +174,55 @@ export default function Settings() {
             <p style={{ margin: "6px 0 0", fontSize: 12, color: "#888" }}>
               영어 프롬프트는 일반적으로 더 풍부한 AI 응답을 생성합니다.
             </p>
+          </div>
+
+          <hr style={{ border: "none", borderTop: "1px solid #f0f0f0", margin: "20px 0" }} />
+
+          <h4 style={{ margin: "0 0 12px", fontSize: 14, color: "#333" }}>로컬 모델 (Ollama)</h4>
+          <p style={{ margin: "0 0 12px", fontSize: 12, color: "#888" }}>
+            API 키 없이 로컬 Ollama 모델을 사용합니다. API 키가 설정된 경우 OpenAI가 우선합니다.
+          </p>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+              Ollama 엔드포인트
+            </label>
+            <input
+              type="text"
+              value={ollamaEndpoint}
+              onChange={(e) => setOllamaEndpoint(e.target.value)}
+              placeholder="http://localhost:11434"
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                border: "1px solid #ddd",
+                borderRadius: 6,
+                fontSize: 14,
+                boxSizing: "border-box",
+                fontFamily: "monospace",
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+              Ollama 모델
+            </label>
+            <input
+              type="text"
+              value={ollamaModel}
+              onChange={(e) => setOllamaModel(e.target.value)}
+              placeholder="예: llama3, mistral, gemma3 (비워두면 비활성화)"
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                border: "1px solid #ddd",
+                borderRadius: 6,
+                fontSize: 14,
+                boxSizing: "border-box",
+                fontFamily: "monospace",
+              }}
+            />
           </div>
 
           <button

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { extractJson } from "../lib/jsonUtils";
 import { submitEval } from "../lib/api";
 
 interface Question {
@@ -22,7 +21,8 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange }: 
   const [submitted, setSubmitted] = useState(false);
   const [evalResult, setEvalResult] = useState<{ newLevel: number; levelChanged: boolean } | null>(null);
 
-  const questions = extractJson<Question[]>(body) ?? [];
+  let questions: Question[] = [];
+  try { questions = JSON.parse(body) as Question[]; } catch { /* ignore */ }
   if (questions.length === 0 && body.trim()) {
     return <p style={{ color: "#aaa" }}>퀴즈 데이터를 파싱할 수 없습니다.</p>;
   }

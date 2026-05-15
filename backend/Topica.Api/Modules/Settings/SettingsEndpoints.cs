@@ -18,6 +18,8 @@ public static class SettingsEndpoints
                 language = s.Language,
                 hasApiKey = !string.IsNullOrWhiteSpace(s.ApiKey),
                 embeddingModel = s.EmbeddingModel,
+                ollamaEndpoint = s.OllamaEndpoint,
+                ollamaModel = s.OllamaModel,
             });
         });
 
@@ -48,6 +50,10 @@ public static class SettingsEndpoints
                 openAi["Language"] = req.Language;
             if (req.EmbeddingModel is not null)
                 openAi["EmbeddingModel"] = req.EmbeddingModel;
+            if (req.OllamaEndpoint is not null)
+                openAi["OllamaEndpoint"] = req.OllamaEndpoint;
+            if (req.OllamaModel is not null)
+                openAi["OllamaModel"] = req.OllamaModel;
 
             await File.WriteAllTextAsync(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
 
@@ -58,4 +64,4 @@ public static class SettingsEndpoints
     }
 }
 
-public record SettingsRequest(string? ApiKey, string? Model, string? Language, string? EmbeddingModel);
+public record SettingsRequest(string? ApiKey, string? Model, string? Language, string? EmbeddingModel, string? OllamaEndpoint, string? OllamaModel);

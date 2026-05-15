@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@iyulab/declart':
+        specifier: ^0.17.0
+        version: 0.17.0
       '@tauri-apps/api':
         specifier: ^2
         version: 2.11.0
@@ -375,6 +378,10 @@ packages:
     peerDependenciesMeta:
       '@noble/hashes':
         optional: true
+
+  '@iyulab/declart@0.17.0':
+    resolution: {integrity: sha512-lVIICGBXaw2YZJy0l8Yn1A1Vc1SxDKuXUrs3QWFALXrr9VSJGNawa6P9x0EHDpWBNZm1MMBbNIwUKy9Mon51dw==}
+    engines: {node: '>=16'}
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -1665,6 +1672,8 @@ snapshots:
     optional: true
 
   '@exodus/bytes@1.15.0': {}
+
+  '@iyulab/declart@0.17.0': {}
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:

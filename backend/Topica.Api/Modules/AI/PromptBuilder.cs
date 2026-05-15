@@ -172,7 +172,7 @@ public static class PromptBuilder
 
     public static string Mindmap(Topic topic, string researchContext, int level, string language) => language == "en"
         ? $$"""
-            You are an educational content writer. Generate a mind map for the topic below as a JSON tree.
+            You are an educational content writer. Generate a mind map for the topic below in the following TOML flat-list format.
 
             Topic: {{topic.Title}}
             Target level: {{level}}/10
@@ -181,15 +181,28 @@ public static class PromptBuilder
             {{researchContext}}
 
             Requirements:
-            - Central node is the topic title
-            - 4-7 main branches (children of root)
-            - Each branch has 2-4 sub-concepts (grandchildren)
-            - Labels should be concise (1-5 words)
-            - Respond ONLY with this JSON format, no extra text:
-            {"label":"Topic Title","children":[{"label":"Branch 1","children":[{"label":"Sub 1.1","children":[]},{"label":"Sub 1.2","children":[]}]},{"label":"Branch 2","children":[]}]}
+            - Root item is the topic title (no parent field)
+            - 4-7 main branches as direct children of root
+            - Each branch has 2-4 sub-concepts as grandchildren
+            - Labels must be concise (1-5 words)
+            - The parent field must exactly match the parent item's label
+            - Respond ONLY with the TOML below, no extra text:
+
+            kind = "hierarchy"
+
+            [[items]]
+            label = "Topic Title"
+
+            [[items]]
+            label = "Branch 1"
+            parent = "Topic Title"
+
+            [[items]]
+            label = "Sub-concept 1.1"
+            parent = "Branch 1"
             """
         : $$"""
-            당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 마인드맵을 JSON 트리 형식으로 생성하세요.
+            당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 마인드맵을 아래 TOML 플랫 리스트 형식으로 생성하세요.
 
             토픽: {{topic.Title}}
             대상 수준: {{level}}/10
@@ -198,12 +211,25 @@ public static class PromptBuilder
             {{researchContext}}
 
             요구사항:
-            - 루트 노드는 토픽 제목
-            - 주요 가지 4~7개 (루트의 자식)
-            - 각 가지에 하위 개념 2~4개 (손자 노드)
+            - 루트 항목은 토픽 제목 (parent 필드 없음)
+            - 루트의 직접 자식으로 주요 가지 4~7개
+            - 각 가지에 하위 개념 2~4개
             - 레이블은 간결하게 (1~5 단어)
-            - 반드시 아래 JSON 형식만 응답, 다른 텍스트 없음:
-            {"label":"토픽 제목","children":[{"label":"가지 1","children":[{"label":"하위 1.1","children":[]},{"label":"하위 1.2","children":[]}]},{"label":"가지 2","children":[]}]}
+            - parent 필드는 부모 항목의 label 값과 정확히 일치해야 함
+            - 반드시 아래 TOML 형식만 응답, 다른 텍스트 없음:
+
+            kind = "hierarchy"
+
+            [[items]]
+            label = "토픽 제목"
+
+            [[items]]
+            label = "가지 1"
+            parent = "토픽 제목"
+
+            [[items]]
+            label = "하위 개념 1.1"
+            parent = "가지 1"
             """;
 
     public static string TagSystem() =>

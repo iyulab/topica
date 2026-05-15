@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { generateContent, getContents, getLevelRecommendation, getRelatedTopics, getTags, getTopics, type Content, type LevelRecommendation, type RelatedTopic, type Topic } from "../../lib/api";
+import { generateContent, getContents, getLevelRecommendation, getRelatedTopics, getTags, getTopics, postLearningSession, type Content, type LevelRecommendation, type RelatedTopic, type Topic } from "../../lib/api";
 import { topicaWs, type WsMessage } from "../../lib/ws";
 import { useQueueStore } from "../../lib/store";
 import LevelBadge from "../../components/LevelBadge";
@@ -221,7 +221,12 @@ export default function Studio() {
           boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
         }}>
           {tabs[activeTab].renderer === "flashcard" && (
-            <FlashcardViewer body={tabs[activeTab].content!.body} />
+            <FlashcardViewer
+              body={tabs[activeTab].content!.body}
+              onComplete={(count) => {
+                if (topicId) postLearningSession(topicId, 0, null, count).catch(() => {});
+              }}
+            />
           )}
           {tabs[activeTab].renderer === "quiz" && (
             <QuizViewer
@@ -231,6 +236,12 @@ export default function Studio() {
               onLevelChange={(newLevel) => {
                 setTopic((t) => t ? { ...t, userLevel: newLevel } : t);
                 if (topicId) getLevelRecommendation(topicId).then(setRecommendation).catch(() => {});
+              }}
+              onComplete={(score, total) => {
+                if (topicId) {
+                  const pct = Math.round((score / total) * 100);
+                  postLearningSession(topicId, 0, pct, 0).catch(() => {});
+                }
               }}
             />
           )}

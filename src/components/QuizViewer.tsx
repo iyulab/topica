@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { submitEval } from "../lib/api";
 
 interface Question {
@@ -13,9 +13,10 @@ interface Props {
   topicId?: string;
   contentId?: string;
   onLevelChange?: (newLevel: number) => void;
+  onComplete?: (score: number, total: number) => void;
 }
 
-export default function QuizViewer({ body, topicId, contentId, onLevelChange }: Props) {
+export default function QuizViewer({ body, topicId, contentId, onLevelChange, onComplete }: Props) {
   const [selected, setSelected] = useState<Map<number, number>>(new Map());
   const [current, setCurrent] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -23,6 +24,13 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange }: 
 
   let questions: Question[] = [];
   try { questions = JSON.parse(body) as Question[]; } catch { /* ignore */ }
+
+  const score = [...selected.entries()].filter(([i, v]) => questions[i]?.answer === v).length;
+
+  useEffect(() => {
+    if (submitted) onComplete?.(score, questions.length);
+  }, [submitted]); // eslint-disable-line react-hooks/exhaustive-deps
+
   if (questions.length === 0 && body.trim()) {
     return <p style={{ color: "#aaa" }}>퀴즈 데이터를 파싱할 수 없습니다.</p>;
   }
@@ -32,7 +40,6 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange }: 
   const q = questions[current];
   const chosen = selected.get(current);
   const answered = chosen !== undefined;
-  const score = [...selected.entries()].filter(([i, v]) => questions[i]?.answer === v).length;
   const allAnswered = selected.size === questions.length;
 
   const handleSubmit = async () => {

@@ -7,9 +7,10 @@ interface Card {
 
 interface Props {
   body: string;
+  onComplete?: (flashcardsStudied: number) => void;
 }
 
-export default function FlashcardViewer({ body }: Props) {
+export default function FlashcardViewer({ body, onComplete }: Props) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [current, setCurrent] = useState(0);
   const [studied, setStudied] = useState<Set<number>>(new Set());
@@ -27,6 +28,11 @@ export default function FlashcardViewer({ body }: Props) {
     if (!isFlipped) setStudied((s) => new Set(s).add(current));
     setIsFlipped((v) => !v);
   };
+
+  const allDone = cards.length > 0 && studied.size === cards.length;
+  useEffect(() => {
+    if (allDone) onComplete?.(cards.length);
+  }, [allDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (cards.length === 0) return;

@@ -12,6 +12,7 @@ using Topica.Api.Modules.RAG;
 using Topica.Api.Modules.Tag;
 using Topica.Api.Modules.Research;
 using Topica.Api.Modules.Settings;
+using Topica.Api.Modules.LearningSessions;
 using Topica.Api.Modules.Survey;
 using Topica.Api.Modules.Topics;
 using Topica.Api.Modules.WS;
@@ -48,6 +49,7 @@ builder.Services.AddChatModule();
 builder.Services.AddSurveyModule();
 builder.Services.AddTagModule();
 builder.Services.AddGraphModule();
+builder.Services.AddLearningSessionModule();
 
 builder.Services.AddSingleton<WsHub>();
 builder.Services.AddSingleton<ContentQueueService>();
@@ -76,6 +78,7 @@ app.MapSurveyEndpoints();
 app.MapEvalEndpoints();
 app.MapTagEndpoints();
 app.MapGraphEndpoints();
+app.MapLearningSessionEndpoints();
 
 app.Map("/ws", async (HttpContext context, WsHub hub) =>
 {

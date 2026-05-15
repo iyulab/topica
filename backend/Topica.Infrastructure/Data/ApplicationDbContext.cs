@@ -15,6 +15,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<EvalSession> EvalSessions => Set<EvalSession>();
     public DbSet<ChatSession> ChatSessions => Set<ChatSession>();
     public DbSet<AppNotification> Notifications => Set<AppNotification>();
+    public DbSet<LearningSession> LearningSessions => Set<LearningSession>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

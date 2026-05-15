@@ -17,4 +17,5 @@ public class Topic
     public ICollection<TopicEdge> IncomingEdges { get; set; } = [];
     public ICollection<EvalSession> EvalSessions { get; set; } = [];
     public ICollection<ChatSession> ChatSessions { get; set; } = [];
+    public ICollection<LearningSession> LearningSessions { get; set; } = [];
 }

@@ -39,10 +39,15 @@ public class LearningSessionService(ApplicationDbContext db)
         var todaySessionCount = await db.LearningSessions
             .CountAsync(s => s.StartedAt >= today, ct);
 
-        var streak7d = await Task.WhenAll(
-            Enumerable.Range(0, 7).Select(i =>
-                db.LearningSessions.CountAsync(
-                    s => s.StartedAt >= today.AddDays(-i) && s.StartedAt < today.AddDays(-i + 1), ct)));
+        var since = today.AddDays(-6);
+        var byDay = await db.LearningSessions
+            .Where(s => s.StartedAt >= since)
+            .GroupBy(s => s.StartedAt.Date)
+            .Select(g => new { Day = g.Key, Count = g.Count() })
+            .ToListAsync(ct);
+        var streak7d = Enumerable.Range(0, 7)
+            .Select(i => byDay.FirstOrDefault(x => x.Day == today.AddDays(-i))?.Count ?? 0)
+            .ToArray();
 
         var scoreByTopic = await db.LearningSessions
             .Where(s => s.QuizScore.HasValue)

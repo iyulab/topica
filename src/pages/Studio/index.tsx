@@ -223,8 +223,8 @@ export default function Studio() {
           {tabs[activeTab].renderer === "flashcard" && (
             <FlashcardViewer
               body={tabs[activeTab].content!.body}
-              onComplete={(count) => {
-                if (topicId) postLearningSession(topicId, 0, null, count).catch(() => {});
+              onComplete={(count, duration) => {
+                if (topicId) postLearningSession(topicId, duration, null, count).catch(() => {});
               }}
             />
           )}
@@ -237,10 +237,10 @@ export default function Studio() {
                 setTopic((t) => t ? { ...t, userLevel: newLevel } : t);
                 if (topicId) getLevelRecommendation(topicId).then(setRecommendation).catch(() => {});
               }}
-              onComplete={(score, total) => {
+              onComplete={(score, total, duration) => {
                 if (topicId) {
                   const pct = Math.round((score / total) * 100);
-                  postLearningSession(topicId, 0, pct, 0).catch(() => {});
+                  postLearningSession(topicId, duration, pct, 0).catch(() => {});
                 }
               }}
             />

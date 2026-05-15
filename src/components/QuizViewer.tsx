@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { submitEval } from "../lib/api";
 
 interface Question {
@@ -13,7 +13,7 @@ interface Props {
   topicId?: string;
   contentId?: string;
   onLevelChange?: (newLevel: number) => void;
-  onComplete?: (score: number, total: number) => void;
+  onComplete?: (score: number, total: number, durationSeconds: number) => void;
 }
 
 export default function QuizViewer({ body, topicId, contentId, onLevelChange, onComplete }: Props) {
@@ -21,6 +21,7 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
   const [current, setCurrent] = useState(0);
   const [submitted, setSubmitted] = useState(false);
   const [evalResult, setEvalResult] = useState<{ newLevel: number; levelChanged: boolean } | null>(null);
+  const startTimeRef = useRef<number>(Date.now());
 
   let questions: Question[] = [];
   try { questions = JSON.parse(body) as Question[]; } catch { /* ignore */ }
@@ -28,7 +29,7 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
   const score = [...selected.entries()].filter(([i, v]) => questions[i]?.answer === v).length;
 
   useEffect(() => {
-    if (submitted) onComplete?.(score, questions.length);
+    if (submitted) onComplete?.(score, questions.length, Math.round((Date.now() - startTimeRef.current) / 1000));
   }, [submitted]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (questions.length === 0 && body.trim()) {

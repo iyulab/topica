@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface Card {
   front: string;
@@ -7,13 +7,14 @@ interface Card {
 
 interface Props {
   body: string;
-  onComplete?: (flashcardsStudied: number) => void;
+  onComplete?: (flashcardsStudied: number, durationSeconds: number) => void;
 }
 
 export default function FlashcardViewer({ body, onComplete }: Props) {
   const [isFlipped, setIsFlipped] = useState(false);
   const [current, setCurrent] = useState(0);
   const [studied, setStudied] = useState<Set<number>>(new Set());
+  const startTimeRef = useRef<number>(Date.now());
 
   let cards: Card[] = [];
   try { cards = JSON.parse(body) as Card[]; } catch { /* ignore */ }
@@ -31,7 +32,7 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
 
   const allDone = cards.length > 0 && studied.size === cards.length;
   useEffect(() => {
-    if (allDone) onComplete?.(cards.length);
+    if (allDone) onComplete?.(cards.length, Math.round((Date.now() - startTimeRef.current) / 1000));
   }, [allDone]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

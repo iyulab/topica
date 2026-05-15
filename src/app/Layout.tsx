@@ -25,6 +25,7 @@ export default function Layout() {
         </div>
         <NavLink to="/" active={pathname === "/"} label="토픽 목록" />
         <NavLink to="/graph" active={pathname === "/graph"} label="토픽 그래프" />
+        <NavLink to="/stats" active={pathname === "/stats"} label="학습 통계" />
         <NavLink to="/settings" active={pathname === "/settings"} label="설정" />
         {activeItems.length > 0 && (
           <div style={{ padding: "8px 16px", fontSize: 12, color: "#ffd54f", display: "flex", alignItems: "center", gap: 6 }}>

@@ -250,3 +250,26 @@ export interface RelatedTopic {
 export async function getRelatedTopics(topicId: string): Promise<RelatedTopic[]> {
   return apiGet<RelatedTopic[]>(`/topics/${topicId}/related`);
 }
+
+// --- Learning Session API ---
+
+export interface LearningStats {
+  totalTopicsStudied: number;
+  totalStudyMinutes: number;
+  todaySessionCount: number;
+  streak7d: number[];
+  scoreByTopic: { title: string; avgScore: number }[];
+}
+
+export async function postLearningSession(
+  topicId: string,
+  durationSeconds: number,
+  quizScore: number | null,
+  flashcardsStudied: number
+): Promise<void> {
+  await apiPost("/learning-sessions", { topicId, durationSeconds, quizScore, flashcardsStudied });
+}
+
+export async function getLearningStats(): Promise<LearningStats> {
+  return apiGet<LearningStats>("/learning-sessions/stats");
+}

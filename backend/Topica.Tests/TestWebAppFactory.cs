@@ -53,6 +53,19 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
                 .ToList();
             foreach (var d in workerDescriptors)
                 services.Remove(d);
+
+            // Remove keyed "local" lm-supply services to prevent model downloads in tests
+            var localKeyedToRemove = services
+                .Where(d => d.ServiceKey is "local")
+                .ToList();
+            foreach (var d in localKeyedToRemove)
+                services.Remove(d);
+
+            // Register no-op stubs for keyed "local" services
+            services.AddKeyedSingleton<Microsoft.Extensions.AI.IChatClient>("local",
+                (sp, _) => new FakeChatClient("*(로컬 모델 테스트 스텁)*"));
+            services.AddKeyedSingleton<FluxIndex.Core.Application.Interfaces.IEmbeddingService>("local",
+                (sp, _) => new NoOpLocalEmbeddingService());
         });
     }
 
@@ -80,5 +93,24 @@ public class TestWebAppFactory : WebApplicationFactory<Program>
     {
         public Task<IReadOnlyList<SearchResult>> SearchAsync(string query, CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<SearchResult>>([]);
+    }
+
+    private sealed class NoOpLocalEmbeddingService
+        : FluxIndex.Core.Application.Interfaces.IEmbeddingService
+    {
+        public Task<float[]> GenerateEmbeddingAsync(string text, CancellationToken ct = default)
+            => Task.FromResult(Array.Empty<float>());
+
+        public Task<IEnumerable<float[]>> GenerateEmbeddingsBatchAsync(
+            IEnumerable<string> texts, CancellationToken ct = default)
+            => Task.FromResult(Enumerable.Empty<float[]>());
+
+        public int GetEmbeddingDimension() => 0;
+        public string GetModelName() => "local-stub";
+        public int GetMaxTokens() => 512;
+        public Task<int> CountTokensAsync(string text, CancellationToken ct = default)
+            => Task.FromResult(0);
+        public FluxIndex.Core.Domain.ValueObjects.EmbeddingIdentity GetIdentity()
+            => new() { Provider = "local", Model = "stub", Dimension = 0 };
     }
 }

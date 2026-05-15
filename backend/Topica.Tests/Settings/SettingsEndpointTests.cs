@@ -37,6 +37,8 @@ public class SettingsEndpointTests(TestWebAppFactory factory) : IClassFixture<Te
         Assert.True(root.TryGetProperty("ollamaEndpoint", out _));
         Assert.True(root.TryGetProperty("ollamaModel", out _));
         Assert.True(root.TryGetProperty("ollamaEmbeddingModel", out _));
+        Assert.True(root.TryGetProperty("chatProvider", out _));
+        Assert.True(root.TryGetProperty("embeddingProvider", out _));
     }
 
     [Fact]

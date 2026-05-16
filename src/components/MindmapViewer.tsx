@@ -1,50 +1,41 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
+import { Transformer } from "markmap-lib";
+import { Markmap } from "markmap-view";
 
 interface Props {
   body: string;
 }
 
-export default function MindmapViewer({ body }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+const transformer = new Transformer();
 
-  const isLegacyJson = body.trim().startsWith("{");
+const isLegacy = (body: string) => {
+  const t = body.trim();
+  return t.startsWith("{") || t.startsWith("kind");
+};
+
+export default function MindmapViewer({ body }: Props) {
+  const svgRef = useRef<SVGSVGElement>(null);
+  const mmRef = useRef<Markmap | null>(null);
 
   useEffect(() => {
-    if (isLegacyJson) {
-      setLoading(false);
-      return;
+    if (isLegacy(body) || !svgRef.current) return;
+    const { root } = transformer.transform(body);
+    if (mmRef.current) {
+      mmRef.current.setData(root);
+      mmRef.current.fit();
+    } else {
+      mmRef.current = Markmap.create(svgRef.current, {}, root);
     }
+  }, [body]);
 
-    let cancelled = false;
+  useEffect(() => {
+    return () => {
+      mmRef.current?.destroy();
+      mmRef.current = null;
+    };
+  }, []);
 
-    import("@iyulab/declart")
-      .then(({ render }) => {
-        if (cancelled) return;
-        if (!containerRef.current) return;
-        try {
-          const doc = new DOMParser().parseFromString(render(body), "image/svg+xml");
-          const parseError = doc.querySelector("parsererror");
-          if (parseError) throw new Error("SVG 파싱 실패: " + (parseError.textContent?.slice(0, 100) ?? ""));
-          containerRef.current.replaceChildren(doc.documentElement);
-          setError(null);
-        } catch (e) {
-          if (!cancelled) setError(e instanceof Error ? e.message : "렌더링 실패");
-        }
-        if (!cancelled) setLoading(false);
-      })
-      .catch((e) => {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "WASM 로드 실패");
-          setLoading(false);
-        }
-      });
-
-    return () => { cancelled = true; };
-  }, [body, isLegacyJson]);
-
-  if (isLegacyJson) {
+  if (isLegacy(body)) {
     return (
       <div style={{ padding: 24, textAlign: "center", color: "#888", fontSize: 13 }}>
         <p>이전 형식의 마인드맵입니다.</p>
@@ -53,23 +44,10 @@ export default function MindmapViewer({ body }: Props) {
     );
   }
 
-  if (loading) {
-    return <div style={{ padding: 24, textAlign: "center", color: "#aaa", fontSize: 13 }}>마인드맵 렌더링 중…</div>;
-  }
-
-  if (error) {
-    return (
-      <div style={{ padding: 16, background: "#fff3cd", borderRadius: 8, fontSize: 13, color: "#856404" }}>
-        <strong>마인드맵 렌더링 오류:</strong> {error}
-        <pre style={{ marginTop: 8, fontSize: 11, whiteSpace: "pre-wrap" }}>{body.slice(0, 300)}</pre>
-      </div>
-    );
-  }
-
   return (
-    <div
-      ref={containerRef}
-      style={{ overflowX: "auto", display: "flex", justifyContent: "center" }}
+    <svg
+      ref={svgRef}
+      style={{ width: "100%", height: "520px", display: "block" }}
     />
   );
 }

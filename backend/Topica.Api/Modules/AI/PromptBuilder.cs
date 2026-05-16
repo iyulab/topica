@@ -172,7 +172,7 @@ public static class PromptBuilder
 
     public static string Mindmap(Topic topic, string researchContext, int level, string language) => language == "en"
         ? $$"""
-            You are an educational content writer. Generate a mind map for the topic below in the following TOML flat-list format.
+            You are an educational content writer. Generate a mind map for the topic below using markdown headings.
 
             Topic: {{topic.Title}}
             Target level: {{level}}/10
@@ -181,28 +181,19 @@ public static class PromptBuilder
             {{researchContext}}
 
             Requirements:
-            - Root item is the topic title (no parent field)
-            - 4-7 main branches as direct children of root
-            - Each branch has 2-4 sub-concepts as grandchildren
+            - Use # for the root (topic title), ## for 4-7 main branches, ### for 2-4 sub-concepts per branch
             - Labels must be concise (1-5 words)
-            - The parent field must exactly match the parent item's label
-            - Respond ONLY with the TOML below, no extra text:
+            - Respond ONLY with the markdown below, no extra text:
 
-            kind = "hierarchy"
-
-            [[items]]
-            label = "Topic Title"
-
-            [[items]]
-            label = "Branch 1"
-            parent = "Topic Title"
-
-            [[items]]
-            label = "Sub-concept 1.1"
-            parent = "Branch 1"
+            # Topic Title
+            ## Branch 1
+            ### Sub-concept 1.1
+            ### Sub-concept 1.2
+            ## Branch 2
+            ### Sub-concept 2.1
             """
         : $$"""
-            당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 마인드맵을 아래 TOML 플랫 리스트 형식으로 생성하세요.
+            당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 마인드맵을 마크다운 헤딩 형식으로 생성하세요.
 
             토픽: {{topic.Title}}
             대상 수준: {{level}}/10
@@ -211,25 +202,16 @@ public static class PromptBuilder
             {{researchContext}}
 
             요구사항:
-            - 루트 항목은 토픽 제목 (parent 필드 없음)
-            - 루트의 직접 자식으로 주요 가지 4~7개
-            - 각 가지에 하위 개념 2~4개
+            - # 루트(토픽 제목), ## 주요 가지 4~7개, ### 하위 개념 2~4개
             - 레이블은 간결하게 (1~5 단어)
-            - parent 필드는 부모 항목의 label 값과 정확히 일치해야 함
-            - 반드시 아래 TOML 형식만 응답, 다른 텍스트 없음:
+            - 반드시 아래 마크다운 형식만 응답, 다른 텍스트 없음:
 
-            kind = "hierarchy"
-
-            [[items]]
-            label = "토픽 제목"
-
-            [[items]]
-            label = "가지 1"
-            parent = "토픽 제목"
-
-            [[items]]
-            label = "하위 개념 1.1"
-            parent = "가지 1"
+            # 토픽 제목
+            ## 가지 1
+            ### 하위 개념 1.1
+            ### 하위 개념 1.2
+            ## 가지 2
+            ### 하위 개념 2.1
             """;
 
     public static string TagSystem() =>

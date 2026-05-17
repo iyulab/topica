@@ -94,6 +94,7 @@ export default function ChatPanel({ topicId }: Props) {
               color: msg.role === 0 ? "#fff" : "#222",
               fontSize: 14,
               lineHeight: 1.5,
+              animation: "chat-msg-enter 0.2s ease-out",
             }}>
               {msg.role === 1 ? (
                 <div style={{ color: "#222" }}>
@@ -111,10 +112,23 @@ export default function ChatPanel({ topicId }: Props) {
               padding: "10px 14px",
               borderRadius: "12px 12px 12px 4px",
               background: "#f0f0f0",
-              color: "#888",
-              fontSize: 14,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
             }}>
-              ⏳ 응답 생성 중...
+              {[0, 1, 2].map((i) => (
+                <span
+                  key={i}
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    background: "#999",
+                    display: "inline-block",
+                    animation: `typing-dot 1.2s ease-in-out ${i * 0.2}s infinite`,
+                  }}
+                />
+              ))}
             </div>
           </div>
         )}

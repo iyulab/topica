@@ -10,4 +10,5 @@ public class AiSettings
     public string OllamaEndpoint { get; set; } = "http://localhost:11434";
     public string OllamaModel { get; set; } = string.Empty;
     public string OllamaEmbeddingModel { get; set; } = string.Empty;
+    public string OllamaApiKey { get; set; } = string.Empty;
 }

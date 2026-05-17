@@ -25,6 +25,7 @@ export default function Settings() {
   const [ollamaEndpoint, setOllamaEndpoint] = useState("http://localhost:11434");
   const [ollamaModel, setOllamaModel] = useState("");
   const [ollamaEmbeddingModel, setOllamaEmbeddingModel] = useState("");
+  const [ollamaApiKey, setOllamaApiKey] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [reindexRequired, setReindexRequired] = useState(false);
@@ -88,7 +89,7 @@ export default function Settings() {
     setSaved(false);
     setSaveError(null);
     try {
-      const result = await saveSettings(apiKey, model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel);
+      const result = await saveSettings(apiKey, model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel, ollamaApiKey);
       setSettings((s) => {
         if (!s) return null;
         const newHasApiKey = !!apiKey || (s.hasApiKey && !apiKey);
@@ -397,6 +398,27 @@ export default function Settings() {
               value={ollamaEndpoint}
               onChange={(e) => setOllamaEndpoint(e.target.value)}
               placeholder="http://localhost:11434"
+              style={{
+                width: "100%",
+                padding: "8px 12px",
+                border: "1px solid #ddd",
+                borderRadius: 6,
+                fontSize: 14,
+                boxSizing: "border-box",
+                fontFamily: "monospace",
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+              API 키 (선택)
+            </label>
+            <input
+              type="password"
+              value={ollamaApiKey}
+              onChange={(e) => setOllamaApiKey(e.target.value)}
+              placeholder="인증이 필요한 경우 입력 (예: GPUStack, LM Studio)"
               style={{
                 width: "100%",
                 padding: "8px 12px",

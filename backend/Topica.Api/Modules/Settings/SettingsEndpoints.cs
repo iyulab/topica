@@ -74,6 +74,7 @@ public static class SettingsEndpoints
                 if (req.OllamaEndpoint is not null) s.OllamaEndpoint = req.OllamaEndpoint;
                 if (req.OllamaModel is not null) s.OllamaModel = req.OllamaModel;
                 if (req.OllamaEmbeddingModel is not null) s.OllamaEmbeddingModel = req.OllamaEmbeddingModel;
+                if (req.OllamaApiKey is not null) s.OllamaApiKey = req.OllamaApiKey;
             });
 
             return Results.Ok(new { message = "설정이 저장되었습니다.", reindexRequired });
@@ -162,4 +163,5 @@ public record SettingsRequest(
     int? EmbeddingDimension,
     string? OllamaEndpoint,
     string? OllamaModel,
-    string? OllamaEmbeddingModel);
+    string? OllamaEmbeddingModel,
+    string? OllamaApiKey);

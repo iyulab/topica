@@ -16,7 +16,11 @@ class TopicaWs {
   async connect(): Promise<void> {
     this.closed = false;
     this.established = false;
-    this.port = await invoke<number>("get_backend_port");
+    try {
+      this.port = await invoke<number>("get_backend_port");
+    } catch {
+      this.port = Number(import.meta.env.VITE_BACKEND_PORT ?? 5174);
+    }
     await this.openSocket(this.port);
     this.established = true;
   }

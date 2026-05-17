@@ -55,6 +55,9 @@ builder.Services.AddSingleton<WsHub>();
 builder.Services.AddSingleton<ContentQueueService>();
 builder.Services.AddHostedService<ContentQueueWorker>();
 
+builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
+    p.SetIsOriginAllowed(_ => true).AllowAnyHeader().AllowAnyMethod()));
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -66,6 +69,7 @@ using (var scope = app.Services.CreateScope())
         db.Database.EnsureCreated();
 }
 
+app.UseCors();
 app.UseWebSockets();
 
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));

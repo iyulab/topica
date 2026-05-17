@@ -4,8 +4,13 @@ let baseUrl: string | null = null;
 
 async function getBaseUrl(): Promise<string> {
   if (baseUrl) return baseUrl;
-  const port: number = await invoke("get_backend_port");
-  baseUrl = `http://127.0.0.1:${port}`;
+  try {
+    const port: number = await invoke("get_backend_port");
+    baseUrl = `http://127.0.0.1:${port}`;
+  } catch {
+    const port = import.meta.env.VITE_BACKEND_PORT ?? "5174";
+    baseUrl = `http://127.0.0.1:${port}`;
+  }
   return baseUrl;
 }
 
@@ -130,11 +135,12 @@ export async function saveSettings(
   embeddingDimension: number,
   ollamaEndpoint: string,
   ollamaModel: string,
-  ollamaEmbeddingModel: string
+  ollamaEmbeddingModel: string,
+  ollamaApiKey: string
 ): Promise<{ reindexRequired: boolean }> {
   return apiPut<{ message: string; reindexRequired: boolean }>(
     "/settings",
-    { apiKey, model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel }
+    { apiKey, model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel, ollamaApiKey }
   );
 }
 

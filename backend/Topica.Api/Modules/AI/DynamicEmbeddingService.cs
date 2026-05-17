@@ -33,7 +33,7 @@ public sealed class DynamicEmbeddingService(
         else if (!string.IsNullOrWhiteSpace(s.OllamaEmbeddingModel))
         {
             endpoint = s.OllamaEndpoint.TrimEnd('/') + "/v1";
-            apiKey = string.Empty;
+            apiKey = s.OllamaApiKey;
             model = s.OllamaEmbeddingModel;
         }
         else

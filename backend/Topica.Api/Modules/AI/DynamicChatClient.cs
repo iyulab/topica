@@ -23,8 +23,9 @@ public class DynamicChatClient(
         if (!string.IsNullOrWhiteSpace(settings.OllamaModel))
         {
             var endpoint = new Uri(settings.OllamaEndpoint.TrimEnd('/') + "/v1");
+            var ollamaKey = !string.IsNullOrWhiteSpace(settings.OllamaApiKey) ? settings.OllamaApiKey : "ollama";
             return new OpenAIClient(
-                new ApiKeyCredential("ollama"),
+                new ApiKeyCredential(ollamaKey),
                 new OpenAIClientOptions { Endpoint = endpoint })
                 .GetChatClient(settings.OllamaModel).AsIChatClient();
         }

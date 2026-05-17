@@ -57,12 +57,32 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
 
   return (
     <div>
+      {/* Completion banner */}
+      {allDone && (
+        <div style={{
+          background: "#e8f5e9", border: "1px solid #4caf50",
+          borderRadius: 8, padding: "12px 20px", marginBottom: 16,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          fontSize: 14,
+        }}>
+          <span style={{ color: "#2e7d32", fontWeight: 600 }}>🎉 카드 {cards.length}장 모두 학습 완료!</span>
+          <button
+            onClick={() => { setStudied(new Set()); goTo(0); }}
+            style={{
+              background: "none", border: "1px solid #4caf50", borderRadius: 5,
+              color: "#2e7d32", cursor: "pointer", fontSize: 12, padding: "4px 10px",
+            }}
+          >
+            처음부터
+          </button>
+        </div>
+      )}
+
       {/* Progress */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <span style={{ fontSize: 13, color: "#888" }}>{current + 1} / {cards.length}</span>
         <span style={{ fontSize: 12, color: studiedCount === cards.length ? "#43a047" : "#888" }}>
           학습 완료 {studiedCount} / {cards.length}
-          {studiedCount === cards.length && " 🎉"}
         </span>
       </div>
 

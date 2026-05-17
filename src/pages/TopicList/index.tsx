@@ -105,11 +105,11 @@ export default function TopicList() {
             disabled={adding || !addTitle.trim() || isLevelInvalid}
             style={{
               padding: "10px 20px",
-              background: adding ? "#aaa" : "#6c63ff",
+              background: (adding || !addTitle.trim() || isLevelInvalid) ? "#aaa" : "#6c63ff",
               color: "#fff",
               border: "none",
               borderRadius: 6,
-              cursor: adding ? "not-allowed" : "pointer",
+              cursor: (adding || !addTitle.trim() || isLevelInvalid) ? "not-allowed" : "pointer",
               fontSize: 14,
               whiteSpace: "nowrap",
             }}

@@ -38,6 +38,48 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
 
   if (questions.length === 0) return <p style={{ color: "#aaa" }}>문제가 없습니다.</p>;
 
+  if (submitted && evalResult) {
+    const percent = Math.round((score / questions.length) * 100);
+    const emoji = percent >= 80 ? "🎉" : percent >= 60 ? "👍" : "💪";
+    const handleRetry = () => {
+      setSelected(new Map());
+      setCurrent(0);
+      setSubmitted(false);
+      setEvalResult(null);
+      startTimeRef.current = Date.now();
+    };
+    return (
+      <div style={{ textAlign: "center", padding: "32px 0" }}>
+        <div style={{ fontSize: 48, marginBottom: 8 }}>{emoji}</div>
+        <h3 style={{ fontSize: 20, margin: "0 0 8px" }}>퀴즈 완료!</h3>
+        <div style={{ fontSize: 32, fontWeight: 700, color: "#6c63ff", marginBottom: 4 }}>
+          {score} / {questions.length}
+        </div>
+        <div style={{ fontSize: 15, color: "#888", marginBottom: 20 }}>{percent}% 정답</div>
+        {evalResult.levelChanged && (
+          <div style={{
+            background: "#e8f5e9", border: "1px solid #4caf50",
+            borderRadius: 8, padding: "10px 16px", marginBottom: 20,
+            fontSize: 13, color: "#2e7d32", display: "inline-block",
+          }}>
+            🎯 레벨이 {evalResult.newLevel}로 조정되었습니다
+          </div>
+        )}
+        <div>
+          <button
+            onClick={handleRetry}
+            style={{
+              padding: "10px 24px", background: "#6c63ff", color: "#fff",
+              border: "none", borderRadius: 6, cursor: "pointer", fontSize: 14, fontWeight: 600,
+            }}
+          >
+            다시 도전
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const q = questions[current];
   const chosen = selected.get(current);
   const answered = chosen !== undefined;

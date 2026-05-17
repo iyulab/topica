@@ -4,7 +4,7 @@ import { getSettings, saveSettings, detectOllamaEmbeddingDimension, triggerReind
 function providerLabel(provider: string): string {
   switch (provider) {
     case "openai": return "OpenAI";
-    case "ollama": return "Ollama (로컬)";
+    case "ollama": return "OpenAI 호환 서버";
     case "local": return "lm-supply (로컬)";
     default: return provider;
   }
@@ -173,7 +173,7 @@ export default function Settings() {
             </div>
           )}
           <div style={{ color: "#595959", fontSize: 11, marginTop: 4 }}>
-            API 키 또는 Ollama 설정 시 해당 제공자가 우선 적용됩니다.
+            API 키(OpenAI) 또는 호환 서버 설정 시 해당 제공자가 우선 적용됩니다.
           </div>
         </div>
       )}
@@ -384,14 +384,14 @@ export default function Settings() {
 
           <hr style={{ border: "none", borderTop: "1px solid #f0f0f0", margin: "20px 0" }} />
 
-          <h4 style={{ margin: "0 0 12px", fontSize: 14, color: "#333" }}>로컬 모델 (Ollama)</h4>
+          <h4 style={{ margin: "0 0 12px", fontSize: 14, color: "#333" }}>OpenAI 호환 서버</h4>
           <p style={{ margin: "0 0 12px", fontSize: 12, color: "#888" }}>
-            API 키 없이 로컬 Ollama 모델을 사용합니다. API 키가 설정된 경우 OpenAI가 우선합니다.
+            Ollama, GPUStack, LM Studio 등 OpenAI 호환 API를 사용합니다. OpenAI API 키가 설정된 경우 OpenAI가 우선합니다.
           </p>
 
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              Ollama 엔드포인트
+              서버 엔드포인트
             </label>
             <input
               type="text"
@@ -433,7 +433,7 @@ export default function Settings() {
 
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              Ollama 채팅 모델
+              채팅 모델
             </label>
             <input
               type="text"
@@ -454,7 +454,7 @@ export default function Settings() {
 
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              Ollama 임베딩 모델
+              임베딩 모델
             </label>
             <input
               type="text"

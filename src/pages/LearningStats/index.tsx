@@ -10,17 +10,39 @@ function Widget({ spec }: { spec: UWidgetSpec }) {
 export default function LearningStats() {
   const [stats, setStats] = useState<LearningStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
+    setStats(null);
+    setLoading(true);
     getLearningStats()
       .then(data => { if (!cancelled) setStats(data); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, []);
+  }, [retryKey]);
 
   if (loading) return <div style={{ padding: 24, color: "#aaa" }}>통계 불러오는 중…</div>;
-  if (!stats) return <div style={{ padding: 24, color: "#e53e3e" }}>통계를 불러올 수 없습니다.</div>;
+  if (!stats) return (
+    <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
+      <h2 style={{ marginBottom: 24 }}>학습 통계</h2>
+      <div style={{ color: "#e53e3e", marginBottom: 12 }}>통계를 불러올 수 없습니다.</div>
+      <button
+        onClick={() => setRetryKey(k => k + 1)}
+        style={{
+          padding: "8px 16px",
+          background: "#6c63ff",
+          color: "#fff",
+          border: "none",
+          borderRadius: 6,
+          fontSize: 13,
+          cursor: "pointer",
+        }}
+      >
+        재시도
+      </button>
+    </div>
+  );
 
   const today = new Date();
   const streak7dData = [...stats.streak7d].reverse().map((count, i) => {

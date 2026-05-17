@@ -172,7 +172,7 @@ public static class PromptBuilder
 
     public static string Mindmap(Topic topic, string researchContext, int level, string language) => language == "en"
         ? $$"""
-            You are an educational content writer. Generate a mind map for the topic below using markdown headings.
+            You are an educational content writer. Generate a mind map for the topic below in Declart TOML hierarchy format.
 
             Topic: {{topic.Title}}
             Target level: {{level}}/10
@@ -181,19 +181,29 @@ public static class PromptBuilder
             {{researchContext}}
 
             Requirements:
-            - Use # for the root (topic title), ## for 4-7 main branches, ### for 2-4 sub-concepts per branch
+            - Use kind = 'hierarchy' at the top
+            - First node is the root (no parent field)
+            - 4-7 main branches (parent = root label)
+            - 2-4 sub-concepts per branch (parent = branch label)
             - Labels must be concise (1-5 words)
-            - Respond ONLY with the markdown below, no extra text:
+            - Respond ONLY with the TOML below, no extra text, no code fences:
 
-            # Topic Title
-            ## Branch 1
-            ### Sub-concept 1.1
-            ### Sub-concept 1.2
-            ## Branch 2
-            ### Sub-concept 2.1
+            kind = 'hierarchy'
+            title = 'Topic Title'
+            [[nodes]]
+            label = 'Root'
+            [[nodes]]
+            label = 'Branch 1'
+            parent = 'Root'
+            [[nodes]]
+            label = 'Sub 1.1'
+            parent = 'Branch 1'
+            [[nodes]]
+            label = 'Branch 2'
+            parent = 'Root'
             """
         : $$"""
-            당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 마인드맵을 마크다운 헤딩 형식으로 생성하세요.
+            당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 마인드맵을 Declart TOML 계층 형식으로 생성하세요.
 
             토픽: {{topic.Title}}
             대상 수준: {{level}}/10
@@ -202,16 +212,26 @@ public static class PromptBuilder
             {{researchContext}}
 
             요구사항:
-            - # 루트(토픽 제목), ## 주요 가지 4~7개, ### 하위 개념 2~4개
+            - 최상단에 kind = 'hierarchy' 선언
+            - 첫 번째 노드가 루트 (parent 필드 없음)
+            - 주요 가지 4~7개 (parent = 루트 레이블)
+            - 가지당 하위 개념 2~4개 (parent = 가지 레이블)
             - 레이블은 간결하게 (1~5 단어)
-            - 반드시 아래 마크다운 형식만 응답, 다른 텍스트 없음:
+            - 반드시 아래 TOML 형식만 응답, 다른 텍스트 없음, 코드 펜스 없음:
 
-            # 토픽 제목
-            ## 가지 1
-            ### 하위 개념 1.1
-            ### 하위 개념 1.2
-            ## 가지 2
-            ### 하위 개념 2.1
+            kind = 'hierarchy'
+            title = '토픽 제목'
+            [[nodes]]
+            label = '루트'
+            [[nodes]]
+            label = '가지 1'
+            parent = '루트'
+            [[nodes]]
+            label = '하위 1.1'
+            parent = '가지 1'
+            [[nodes]]
+            label = '가지 2'
+            parent = '루트'
             """;
 
     public static string TagSystem() =>

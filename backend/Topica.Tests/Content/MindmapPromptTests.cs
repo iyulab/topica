@@ -13,29 +13,28 @@ public class MindmapPromptTests
     };
 
     [Fact]
-    public void Mindmap_EnglishPrompt_ContainsMarkdownHeadings()
+    public void Mindmap_EnglishPrompt_ContainsDeclartToml()
     {
         var prompt = PromptBuilder.Mindmap(MakeTopic(), "no context", 3, "en");
-        Assert.Contains("# ", prompt);
-        Assert.Contains("## ", prompt);
-        Assert.Contains("### ", prompt);
+        Assert.Contains("kind = 'hierarchy'", prompt);
+        Assert.Contains("[[nodes]]", prompt);
+        Assert.Contains("parent =", prompt);
     }
 
     [Fact]
-    public void Mindmap_KoreanPrompt_ContainsMarkdownHeadings()
+    public void Mindmap_KoreanPrompt_ContainsDeclartToml()
     {
         var prompt = PromptBuilder.Mindmap(MakeTopic(), "컨텍스트 없음", 3, "ko");
-        Assert.Contains("# ", prompt);
-        Assert.Contains("## ", prompt);
-        Assert.Contains("### ", prompt);
+        Assert.Contains("kind = 'hierarchy'", prompt);
+        Assert.Contains("[[nodes]]", prompt);
+        Assert.Contains("parent =", prompt);
     }
 
     [Fact]
-    public void Mindmap_Prompt_DoesNotContainDeclartToml()
+    public void Mindmap_Prompt_DoesNotContainMarkdownHeadings()
     {
         var prompt = PromptBuilder.Mindmap(MakeTopic(), "no context", 3, "en");
-        Assert.DoesNotContain("kind = \"hierarchy\"", prompt);
-        Assert.DoesNotContain("[[items]]", prompt);
-        Assert.DoesNotContain("parent =", prompt);
+        Assert.DoesNotContain("## ", prompt);
+        Assert.DoesNotContain("### ", prompt);
     }
 }

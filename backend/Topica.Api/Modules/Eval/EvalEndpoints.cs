@@ -69,15 +69,31 @@ public static class EvalEndpoints
                 .Select(e => e.Score)
                 .ToListAsync(ct);
 
+            var since = DateTime.UtcNow.AddDays(-7);
+            var recentSessionCount = await db.LearningSessions
+                .CountAsync(s => s.TopicId == topicId && s.StartedAt >= since, ct);
+
             if (scores.Count == 0)
-                return Results.Ok(new { recommendedLevel = topic.UserLevel, hasHistory = false, avgScore = (float?)null });
+            {
+                var noHistoryReason = recentSessionCount > 0
+                    ? $"퀴즈 이력 없음 (최근 7일 학습 {recentSessionCount}회) — 퀴즈로 레벨을 확인해보세요"
+                    : "학습 및 퀴즈 이력이 없습니다";
+                return Results.Ok(new { recommendedLevel = topic.UserLevel, hasHistory = false, avgScore = (float?)null, reason = noHistoryReason });
+            }
 
             var avg = scores.Average();
             int recommended = topic.UserLevel;
             if (avg >= 0.75f) recommended = Math.Min(10, topic.UserLevel + 1);
             else if (avg <= 0.45f) recommended = Math.Max(1, topic.UserLevel - 1);
 
-            return Results.Ok(new { recommendedLevel = recommended, hasHistory = true, avgScore = avg });
+            int pct = (int)Math.Round(avg * 100);
+            string sessionSuffix = recentSessionCount > 0 ? $", 최근 7일 학습 {recentSessionCount}회" : "";
+            string direction = recommended > topic.UserLevel ? "수준 향상 권장"
+                : recommended < topic.UserLevel ? "레벨 낮춰 복습 권장"
+                : "현재 레벨 유지";
+            string reason = $"최근 퀴즈 {scores.Count}회 평균 {pct}%{sessionSuffix} — {direction}";
+
+            return Results.Ok(new { recommendedLevel = recommended, hasHistory = true, avgScore = avg, reason });
         });
 
         return app;

@@ -1,5 +1,6 @@
 claudedocs/
 CLAUDE.md
+backend/Topica.Api/appsettings.Development.json
 node_modules/
 dist/
 target/

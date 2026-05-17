@@ -233,6 +233,7 @@ export interface LevelRecommendation {
   recommendedLevel: number;
   hasHistory: boolean;
   avgScore: number | null;
+  reason: string;
 }
 
 export async function getLevelRecommendation(topicId: string): Promise<LevelRecommendation> {

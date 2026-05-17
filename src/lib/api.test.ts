@@ -36,7 +36,7 @@ describe("api.ts", () => {
     });
 
     const { saveSettings } = await import("./api");
-    const result = await saveSettings("", "gpt-4o-mini", "ko", "text-embedding-3-small", 1536, "http://localhost:11434", "", "nomic-embed-text");
+    const result = await saveSettings("", "gpt-4o-mini", "ko", "text-embedding-3-small", 1536, "http://localhost:11434", "", "nomic-embed-text", "");
     expect(result.reindexRequired).toBe(true);
   });
 

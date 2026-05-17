@@ -105,10 +105,13 @@ export default function Studio() {
         <h2 style={{ margin: 0, color: "#222" }}>{topic.title}</h2>
         <LevelBadge level={topic.userLevel} />
         {recommendation?.hasHistory && recommendation.recommendedLevel !== topic.userLevel && (
-          <span style={{
-            padding: "2px 8px", background: "#fff9e6", border: "1px solid #f0c040",
-            borderRadius: 10, fontSize: 11, color: "#b07800",
-          }}>
+          <span
+            title={recommendation.reason}
+            style={{
+              padding: "2px 8px", background: "#fff9e6", border: "1px solid #f0c040",
+              borderRadius: 10, fontSize: 11, color: "#b07800", cursor: "help",
+            }}
+          >
             📊 추천 Lv. {recommendation.recommendedLevel}
           </span>
         )}
@@ -139,6 +142,11 @@ export default function Studio() {
 
       {showSurvey && topicId && (
         <SurveyModal topicId={topicId} onClose={() => setShowSurvey(false)} />
+      )}
+      {recommendation && !recommendation.hasHistory && (
+        <p style={{ margin: "0 0 8px", fontSize: 12, color: "#aaa" }}>
+          💡 {recommendation.reason}
+        </p>
       )}
       {topic.description && (
         <p style={{ margin: "0 0 8px", fontSize: 13, color: "#888" }}>{topic.description}</p>

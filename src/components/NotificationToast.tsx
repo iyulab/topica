@@ -28,7 +28,7 @@ async function sendOsNotification(title: string, body: string) {
 
 const CONTENT_TYPE_LABELS: Record<string, string> = {
   Summary: "요약",
-  Lecture: "강해",
+  Lecture: "강의",
   Flashcard: "플래시카드",
   Quiz: "퀴즈",
   Mindmap: "마인드맵",

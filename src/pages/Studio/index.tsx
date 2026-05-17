@@ -85,7 +85,7 @@ export default function Studio() {
 
   const tabs = [
     { label: "요약", content: summary, isGenerating: topicActiveItems.some((i) => i.contentType === "Summary"), isFailed: topicFailedItems.find((f) => f.contentType === "Summary"), renderer: "markdown" },
-    { label: "강해", content: lecture, isGenerating: topicActiveItems.some((i) => i.contentType === "Lecture"), isFailed: topicFailedItems.find((f) => f.contentType === "Lecture"), renderer: "markdown" },
+    { label: "강의", content: lecture, isGenerating: topicActiveItems.some((i) => i.contentType === "Lecture"), isFailed: topicFailedItems.find((f) => f.contentType === "Lecture"), renderer: "markdown" },
     { label: "플래시카드", content: flashcard, isGenerating: topicActiveItems.some((i) => i.contentType === "Flashcard"), isFailed: topicFailedItems.find((f) => f.contentType === "Flashcard"), renderer: "flashcard" },
     { label: "퀴즈", content: quiz, isGenerating: topicActiveItems.some((i) => i.contentType === "Quiz"), isFailed: topicFailedItems.find((f) => f.contentType === "Quiz"), renderer: "quiz" },
     { label: "마인드맵", content: mindmap, isGenerating: topicActiveItems.some((i) => i.contentType === "Mindmap"), isFailed: topicFailedItems.find((f) => f.contentType === "Mindmap"), renderer: "mindmap" },
@@ -333,7 +333,7 @@ export default function Studio() {
   );
 }
 
-const CONTENT_LABELS = ["요약", "강해", "플래시카드", "퀴즈", "마인드맵"];
+const CONTENT_LABELS = ["요약", "강의", "플래시카드", "퀴즈", "마인드맵"];
 
 function exportTopicMarkdown(topic: { title: string; description: string; userLevel: number }, contents: { type: number; body: string }[], tags: string[]) {
   const lines: string[] = [

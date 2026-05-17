@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getSettings, saveSettings, detectOllamaEmbeddingDimension, triggerReindex, type AiSettings } from "../../lib/api";
 
 function providerLabel(provider: string): string {
@@ -32,6 +32,8 @@ export default function Settings() {
   const [reindexDone, setReindexDone] = useState<{ topicsReindexed: number; ragReindexed: number } | null>(null);
   const [detectingDim, setDetectingDim] = useState(false);
   const [detectError, setDetectError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const saveButtonRef = useRef<HTMLButtonElement>(null);
 
   const loadSettings = () =>
     getSettings()
@@ -84,6 +86,7 @@ export default function Settings() {
     e.preventDefault();
     setSaving(true);
     setSaved(false);
+    setSaveError(null);
     try {
       const result = await saveSettings(apiKey, model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel);
       setSettings((s) => {
@@ -106,6 +109,9 @@ export default function Settings() {
       setSaved(true);
       setReindexRequired(result.reindexRequired);
       setTimeout(() => setSaved(false), 3000);
+      saveButtonRef.current?.focus();
+    } catch {
+      setSaveError("저장에 실패했습니다. 백엔드 연결을 확인하세요.");
     } finally {
       setSaving(false);
     }
@@ -138,15 +144,15 @@ export default function Settings() {
           <div style={{
             fontWeight: 600,
             color: isFullyLocal
-              ? "#6c63ff"
-              : "#666",
+              ? "#4338ca"
+              : "#595959",
             marginBottom: 4,
           }}>
             {isFullyLocal
               ? "✦ 로컬 AI 활성 (자동 선택)"
               : "● 외부 AI 제공자 사용 중"}
           </div>
-          <div style={{ color: "#777", fontSize: 12 }}>
+          <div style={{ color: "#595959", fontSize: 12 }}>
             채팅: <strong>{providerLabel(settings.chatProvider)}</strong>　임베딩: <strong>{providerLabel(settings.embeddingProvider)}</strong>
           </div>
           {isLocalModelLoading && (
@@ -165,7 +171,7 @@ export default function Settings() {
               ⚠ 로컬 모델 로드 실패 — 로그를 확인하세요
             </div>
           )}
-          <div style={{ color: "#999", fontSize: 11, marginTop: 4 }}>
+          <div style={{ color: "#595959", fontSize: 11, marginTop: 4 }}>
             API 키 또는 Ollama 설정 시 해당 제공자가 우선 적용됩니다.
           </div>
         </div>
@@ -449,11 +455,12 @@ export default function Settings() {
           </div>
 
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+            <label htmlFor="embedding-dim" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
               임베딩 차원 수
             </label>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input
+                id="embedding-dim"
                 type="number"
                 value={embeddingDimension}
                 onChange={(e) => setEmbeddingDimension(parseInt(e.target.value, 10) || 1536)}
@@ -508,6 +515,7 @@ export default function Settings() {
           </div>
 
           <button
+            ref={saveButtonRef}
             type="submit"
             disabled={saving}
             style={{
@@ -527,6 +535,11 @@ export default function Settings() {
           {saved && (
             <span style={{ marginLeft: 12, fontSize: 13, color: "#28a745" }}>
               ✓ 저장되었습니다 (즉시 적용됨)
+            </span>
+          )}
+          {saveError && (
+            <span style={{ marginLeft: 12, fontSize: 13, color: "#e53935" }}>
+              ⚠ {saveError}
             </span>
           )}
         </form>

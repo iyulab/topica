@@ -37,6 +37,24 @@ export default function Layout() {
           백엔드: <span style={{ color: isConnected ? "#4caf50" : "#ff9800" }}>
             {isConnected ? "연결됨" : "연결 중..."}
           </span>
+          {!isConnected && (
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                display: "block",
+                marginTop: 6,
+                background: "none",
+                border: "1px solid #555",
+                color: "#ccc",
+                borderRadius: 4,
+                padding: "3px 8px",
+                fontSize: 11,
+                cursor: "pointer",
+              }}
+            >
+              재연결
+            </button>
+          )}
         </div>
       </nav>
 

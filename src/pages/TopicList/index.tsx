@@ -13,17 +13,20 @@ export default function TopicList() {
   const [addLevel, setAddLevel] = useState(5);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadKey, setLoadKey] = useState(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoadError(null);
     setLoading(true);
     getTopics()
       .then(setTopics)
-      .catch(() => setError("토픽 목록을 불러오지 못했습니다."))
+      .catch(() => setLoadError("토픽 목록을 불러오지 못했습니다."))
       .finally(() => setLoading(false));
-  }, [setTopics]);
+  }, [setTopics, loadKey]);
 
   const handleAdd = async () => {
     if (!addTitle.trim()) return;
@@ -39,6 +42,8 @@ export default function TopicList() {
       setAdding(false);
     }
   };
+
+  const isLevelInvalid = showAdvanced && (addLevel < 1 || addLevel > 10);
 
   const allTags = useMemo(() => {
     const set = new Set<string>();
@@ -97,7 +102,7 @@ export default function TopicList() {
           />
           <button
             onClick={handleAdd}
-            disabled={adding || !addTitle.trim()}
+            disabled={adding || !addTitle.trim() || isLevelInvalid}
             style={{
               padding: "10px 20px",
               background: adding ? "#aaa" : "#6c63ff",
@@ -118,7 +123,7 @@ export default function TopicList() {
             onClick={() => setShowAdvanced((v) => !v)}
             style={{ background: "none", border: "none", color: "#6c63ff", fontSize: 12, cursor: "pointer", padding: 0 }}
           >
-            {showAdvanced ? "▲ 옵션 숨기기" : "▼ 고급 옵션 (레벨 설정)"}
+            {showAdvanced ? "▲ 고급 옵션" : "▼ 고급 옵션"}
           </button>
           {showAdvanced && (
             <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
@@ -129,15 +134,22 @@ export default function TopicList() {
                 max={10}
                 value={addLevel}
                 onChange={(e) => setAddLevel(Number(e.target.value))}
+                aria-invalid={isLevelInvalid}
+                aria-describedby={isLevelInvalid ? "level-error" : undefined}
                 style={{
                   width: 64,
                   padding: "6px 10px",
-                  border: "1px solid #ddd",
+                  border: `1px solid ${isLevelInvalid ? "#e53935" : "#ddd"}`,
                   borderRadius: 6,
                   fontSize: 14,
+                  outline: isLevelInvalid ? "2px solid #ffcdd2" : undefined,
                 }}
               />
-              <span style={{ fontSize: 12, color: "#999" }}>기본값 5 — AI가 자동으로 조정합니다</span>
+              {isLevelInvalid ? (
+                <span id="level-error" style={{ fontSize: 11, color: "#e53935" }}>1–10 사이 값을 입력하세요</span>
+              ) : (
+                <span style={{ fontSize: 12, color: "#999" }}>기본값 5 — AI가 자동으로 조정합니다</span>
+              )}
             </div>
           )}
         </div>
@@ -211,6 +223,24 @@ export default function TopicList() {
       {/* List */}
       {loading ? (
         <TopicListSkeleton />
+      ) : loadError ? (
+        <div style={{ textAlign: "center", padding: "40px 0" }}>
+          <p style={{ color: "#e53935", marginBottom: 12 }}>{loadError}</p>
+          <button
+            onClick={() => setLoadKey(k => k + 1)}
+            style={{
+              padding: "8px 16px",
+              background: "#6c63ff",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              fontSize: 13,
+              cursor: "pointer",
+            }}
+          >
+            재시도
+          </button>
+        </div>
       ) : topics.length === 0 ? (
         <p style={{ color: "#999", textAlign: "center", padding: "40px 0" }}>
           아직 토픽이 없습니다. 위에서 추가해보세요!

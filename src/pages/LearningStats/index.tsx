@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { UWidget } from "@iyulab/u-widgets/react";
 import type { UWidgetSpec } from "@iyulab/u-widgets";
-import { getLearningStats, type LearningStats } from "../../lib/api";
+import { getLearningStats, getTopics, getWikiLinks, type LearningStats } from "../../lib/api";
+
+interface PathSuggestion {
+  id: string;
+  title: string;
+}
 
 function Widget({ spec }: { spec: UWidgetSpec }) {
   return <UWidget spec={spec} />;
 }
 
 export default function LearningStats() {
+  const navigate = useNavigate();
   const [stats, setStats] = useState<LearningStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [retryKey, setRetryKey] = useState(0);
+  const [pathSuggestions, setPathSuggestions] = useState<PathSuggestion[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -21,6 +29,33 @@ export default function LearningStats() {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [retryKey]);
+
+  useEffect(() => {
+    if (!stats || stats.scoreByTopic.length === 0) { setPathSuggestions([]); return; }
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const allTopics = await getTopics();
+        const studiedTitles = new Set(stats.scoreByTopic.map(t => t.title));
+        const studiedTopics = allTopics.filter(t => studiedTitles.has(t.title));
+
+        const connectedIds = new Map<string, string>(); // id → title
+        await Promise.all(studiedTopics.map(async (t) => {
+          const wl = await getWikiLinks(t.id).catch(() => ({ existing: [], missing: [] }));
+          for (const e of wl.existing) {
+            if (!studiedTitles.has(e.title)) connectedIds.set(e.id, e.title);
+          }
+        }));
+
+        if (!cancelled) {
+          setPathSuggestions([...connectedIds.entries()].map(([id, title]) => ({ id, title })));
+        }
+      } catch { /* ignore */ }
+    })();
+
+    return () => { cancelled = true; };
+  }, [stats]);
 
   if (loading) return <div style={{ padding: 24, color: "#aaa" }}>통계 불러오는 중…</div>;
   if (!stats) return (
@@ -100,6 +135,41 @@ export default function LearningStats() {
         <p style={{ textAlign: "center", color: "#aaa", marginTop: 32 }}>
           아직 학습 기록이 없습니다. 플래시카드나 퀴즈를 완료하면 여기에 표시됩니다.
         </p>
+      )}
+
+      {pathSuggestions.length > 0 && (
+        <div style={{
+          marginTop: 24,
+          padding: "16px 18px",
+          background: "#f8f7ff",
+          borderRadius: 10,
+          border: "1px solid #e0dcff",
+        }}>
+          <p style={{ margin: "0 0 10px", fontSize: 13, color: "#6c63ff", fontWeight: 600 }}>
+            학습 경로 — 이어서 탐구할 수 있는 토픽
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {pathSuggestions.map(({ id, title }) => (
+              <button
+                key={id}
+                onClick={() => navigate(`/topics/${id}/studio`)}
+                style={{
+                  padding: "5px 14px",
+                  background: "#fff",
+                  border: "1px solid #c5bfff",
+                  borderRadius: 20,
+                  fontSize: 13,
+                  color: "#6c63ff",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#f0eeff")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+              >
+                {title} →
+              </button>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiGet, getRelatedTopics } from "../../lib/api";
+import { apiGet, getRelatedTopics, getWikiLinks, createTopic, type WikiLinkGraph } from "../../lib/api";
+import { useLearningQueueStore } from "../../lib/store";
 
 interface GraphTopic {
   id: string;
@@ -85,9 +86,12 @@ const ALL_LEVELS = Array.from({ length: 10 }, (_, i) => i + 1);
 
 export default function GraphPage() {
   const navigate = useNavigate();
+  const { addItem } = useLearningQueueStore();
+  const [ghostToast, setGhostToast] = useState<string | null>(null);
   const [topics, setTopics] = useState<GraphTopic[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
   const [related, setRelated] = useState<{ id: string; score: number }[]>([]);
+  const [wikiLinks, setWikiLinks] = useState<WikiLinkGraph | null>(null);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [hideNoEmbed, setHideNoEmbed] = useState(false);
   const [minLevel, setMinLevel] = useState(1);
@@ -98,10 +102,13 @@ export default function GraphPage() {
   }, []);
 
   useEffect(() => {
-    if (!selected) { setRelated([]); return; }
+    if (!selected) { setRelated([]); setWikiLinks(null); return; }
     getRelatedTopics(selected)
       .then((r) => setRelated(r.map((x) => ({ id: x.id, score: x.score }))))
       .catch(() => setRelated([]));
+    getWikiLinks(selected)
+      .then(setWikiLinks)
+      .catch(() => setWikiLinks(null));
   }, [selected]);
 
   const allTags = [...new Set(topics.flatMap((t) => t.tags))].sort();
@@ -127,11 +134,47 @@ export default function GraphPage() {
     }
   }, [visibleTopics, selected]);
 
+  async function handleGhostClick(title: string) {
+    try {
+      const topic = await createTopic(title, 5);
+      addItem({ topicId: topic.id, title: topic.title, addedAt: new Date().toISOString() });
+      setGhostToast(`"${title}" 학습 큐에 추가됨`);
+      setTimeout(() => setGhostToast(null), 2500);
+    } catch {
+      setGhostToast("토픽 생성에 실패했습니다.");
+      setTimeout(() => setGhostToast(null), 2500);
+    }
+  }
+
   const relatedIds = new Set(related.map((r) => r.id));
+  const wikiExistingIds = new Set((wikiLinks?.existing ?? []).map((e) => e.id));
+
+  // Ghost nodes for missing [[링크]] topics — placed in a bottom strip (max 6)
+  const ghostNodes = useMemo(() => {
+    if (!wikiLinks || wikiLinks.missing.length === 0 || !selected) return [];
+    const visible = wikiLinks.missing.slice(0, 6);
+    const count = visible.length;
+    const spacing = Math.min(90, (W - PAD * 2) / count);
+    const startX = W / 2 - ((count - 1) * spacing) / 2;
+    return visible.map((title, i) => ({
+      x: Math.max(PAD + 10, Math.min(W - PAD - 10, startX + i * spacing)),
+      y: H - 24,
+      title,
+    }));
+  }, [wikiLinks, selected]);
 
   return (
     <div style={{ padding: 24 }}>
       <h2 style={{ margin: "0 0 16px", color: "#222" }}>토픽 그래프</h2>
+      {ghostToast && (
+        <div style={{
+          position: "fixed", bottom: 24, right: 24, zIndex: 999,
+          background: "#333", color: "#fff", padding: "10px 18px",
+          borderRadius: 8, fontSize: 13, boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+        }}>
+          {ghostToast}
+        </div>
+      )}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", marginBottom: 16 }}>
         {allTags.length > 0 && (
@@ -178,31 +221,55 @@ export default function GraphPage() {
       ) : (
         <div style={{ background: "#fff", borderRadius: 12, padding: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
           <svg width={W} height={H}>
-            {selected && nodes.map((n) => {
-              if (!relatedIds.has(n.topic.id)) return null;
+            {selected && (() => {
               const from = nodes.find((nd) => nd.topic.id === selected);
               if (!from) return null;
-              const rel = related.find((r) => r.id === n.topic.id);
-              return (
-                <line
-                  key={n.topic.id}
-                  x1={from.x} y1={from.y} x2={n.x} y2={n.y}
-                  stroke="#6c63ff" strokeOpacity={rel ? rel.score * 0.8 : 0.4}
-                  strokeWidth={2}
-                  strokeDasharray="4 3"
-                />
-              );
-            })}
+              return <>
+                {/* Embedding-similarity edges */}
+                {nodes.map((n) => {
+                  if (!relatedIds.has(n.topic.id)) return null;
+                  const rel = related.find((r) => r.id === n.topic.id);
+                  return (
+                    <line key={`emb-${n.topic.id}`}
+                      x1={from.x} y1={from.y} x2={n.x} y2={n.y}
+                      stroke="#6c63ff" strokeOpacity={rel ? rel.score * 0.8 : 0.4}
+                      strokeWidth={2} strokeDasharray="4 3"
+                    />
+                  );
+                })}
+                {/* Wiki-link edges to existing topics */}
+                {nodes.map((n) => {
+                  if (!wikiExistingIds.has(n.topic.id)) return null;
+                  return (
+                    <line key={`wiki-${n.topic.id}`}
+                      x1={from.x} y1={from.y} x2={n.x} y2={n.y}
+                      stroke="#e67e22" strokeOpacity={0.6}
+                      strokeWidth={1.5}
+                    />
+                  );
+                })}
+                {/* Ghost node edges (missing topics) */}
+                {ghostNodes.map((g) => (
+                  <line key={`ghost-edge-${g.title}`}
+                    x1={from.x} y1={from.y} x2={g.x} y2={g.y}
+                    stroke="#aaa" strokeOpacity={0.5}
+                    strokeWidth={1} strokeDasharray="4 3"
+                  />
+                ))}
+              </>;
+            })()}
 
             {nodes.map((n) => {
               const isSelected = n.topic.id === selected;
               const isRelated = relatedIds.has(n.topic.id);
+              const isWikiLinked = wikiExistingIds.has(n.topic.id);
               const clusterId = clusterAssignments.get(n.topic.id) ?? -1;
               const ci = clusterId >= 0 ? clusterId % CLUSTER_FILLS.length : -1;
               let fill = ci >= 0 ? CLUSTER_FILLS[ci] : "#f5f5f5";
               let strokeColor = ci >= 0 ? CLUSTER_STROKES[ci] : "#ccc";
-              if (isSelected) { fill = "#6c63ff"; strokeColor = "#4a42d4"; }
-              if (isRelated)  { fill = "#c5f0d4"; strokeColor = "#28a745"; }
+              if (isSelected)    { fill = "#6c63ff"; strokeColor = "#4a42d4"; }
+              if (isRelated)     { fill = "#c5f0d4"; strokeColor = "#28a745"; }
+              if (isWikiLinked && !isSelected && !isRelated) { fill = "#fef3e2"; strokeColor = "#e67e22"; }
               const textCol = isSelected ? "#fff" : "#333";
 
               return (
@@ -221,29 +288,54 @@ export default function GraphPage() {
                 </g>
               );
             })}
+
+            {/* Ghost nodes — missing [[링크]] topics (click to create + enqueue) */}
+            {ghostNodes.map((g) => (
+              <g key={`ghost-${g.title}`}
+                style={{ cursor: "pointer" }}
+                onClick={() => handleGhostClick(g.title)}
+              >
+                <title>{g.title} — 클릭하면 학습 큐에 추가</title>
+                <circle cx={g.x} cy={g.y} r={R - 4}
+                  fill="#f5f5f5" stroke="#bbb" strokeWidth={1.5} strokeDasharray="4 3"
+                />
+                <text x={g.x} y={g.y} textAnchor="middle" dominantBaseline="central"
+                  fontSize={9} fill="#999" style={{ userSelect: "none" }}
+                >
+                  {g.title.length > 9 ? g.title.slice(0, 8) + "…" : g.title}
+                </text>
+                <text x={g.x} y={g.y + 14} textAnchor="middle"
+                  fontSize={8} fill="#bbb" style={{ userSelect: "none" }}
+                >+큐</text>
+              </g>
+            ))}
           </svg>
-          {clusterTags.size > 0 && (
-            <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {[...clusterTags.entries()]
-                .map(([id, tag]) => ({ id, tag, count: visibleTopics.filter((t) => clusterAssignments.get(t.id) === id).length }))
-                .filter(({ count }) => count > 0)
-                .map(({ id, tag, count }) => {
-                  const ci = id % CLUSTER_FILLS.length;
-                  return (
-                    <span
-                      key={id}
-                      style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#555" }}
-                    >
-                      <span style={{
-                        width: 10, height: 10, borderRadius: "50%",
-                        background: CLUSTER_STROKES[ci], display: "inline-block",
-                      }} />
-                      {tag} ({count})
-                    </span>
-                  );
-                })}
-            </div>
-          )}
+          <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+            {clusterTags.size > 0 && [...clusterTags.entries()]
+              .map(([id, tag]) => ({ id, tag, count: visibleTopics.filter((t) => clusterAssignments.get(t.id) === id).length }))
+              .filter(({ count }) => count > 0)
+              .map(({ id, tag, count }) => {
+                const ci = id % CLUSTER_FILLS.length;
+                return (
+                  <span key={id} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#555" }}>
+                    <span style={{ width: 10, height: 10, borderRadius: "50%", background: CLUSTER_STROKES[ci], display: "inline-block" }} />
+                    {tag} ({count})
+                  </span>
+                );
+              })}
+            {selected && (wikiLinks?.existing.length ?? 0) > 0 && (
+              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#e67e22" }}>
+                <span style={{ width: 18, height: 2, background: "#e67e22", display: "inline-block", borderRadius: 1 }} />
+                [[링크]] 연결
+              </span>
+            )}
+            {selected && ghostNodes.length > 0 && (
+              <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#999" }}>
+                <svg width={18} height={6}><line x1={0} y1={3} x2={18} y2={3} stroke="#aaa" strokeWidth={1.5} strokeDasharray="4 3" /></svg>
+                미학습 경로
+              </span>
+            )}
+          </div>
         </div>
       )}
 

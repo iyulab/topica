@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { persist } from "zustand/middleware";
 import type { Topic, Content } from "./api";
 
 export interface QueueItem {
@@ -75,6 +76,37 @@ interface QueueStore {
   finishItem: (topicId: string, contentType: string) => void;
   failItem: (topicId: string, contentType: string, errorMessage: string) => void;
 }
+
+export interface LearningQueueItem {
+  topicId: string;
+  title: string;
+  addedAt: string;
+}
+
+interface LearningQueueStore {
+  items: LearningQueueItem[];
+  addItem: (item: LearningQueueItem) => void;
+  removeItem: (topicId: string) => void;
+  clearAll: () => void;
+}
+
+export const useLearningQueueStore = create<LearningQueueStore>()(
+  persist(
+    (set) => ({
+      items: [],
+      addItem: (item) =>
+        set((s) => ({
+          items: s.items.some((i) => i.topicId === item.topicId)
+            ? s.items
+            : [...s.items, item],
+        })),
+      removeItem: (topicId) =>
+        set((s) => ({ items: s.items.filter((i) => i.topicId !== topicId) })),
+      clearAll: () => set({ items: [] }),
+    }),
+    { name: "topica-learning-queue" }
+  )
+);
 
 export const useQueueStore = create<QueueStore>((set) => ({
   activeItems: [],

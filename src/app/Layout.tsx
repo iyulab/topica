@@ -1,11 +1,13 @@
-import { Link, Outlet, useLocation } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { BookOpen, Network, BarChart2, Settings, type LucideIcon } from "lucide-react";
-import { useAppStore, useQueueStore } from "../lib/store";
+import { useAppStore, useQueueStore, useLearningQueueStore } from "../lib/store";
 import NotificationToast from "../components/NotificationToast";
 
 export default function Layout() {
   const { isConnected } = useAppStore();
   const { activeItems } = useQueueStore();
+  const { items: queueItems, removeItem } = useLearningQueueStore();
+  const navigate = useNavigate();
   const { pathname } = useLocation();
 
   return (
@@ -34,6 +36,40 @@ export default function Layout() {
             생성 중 {activeItems.length}건
           </div>
         )}
+
+        {queueItems.length > 0 && (
+          <div style={{ margin: "8px 0", borderTop: "1px solid #2d2d4e", paddingTop: 8 }}>
+            <div style={{ padding: "4px 16px 6px", fontSize: 11, color: "#888", fontWeight: 600, letterSpacing: "0.05em" }}>
+              📋 학습 큐 ({queueItems.length})
+            </div>
+            {queueItems.slice(0, 4).map((item) => (
+              <div key={item.topicId} style={{ display: "flex", alignItems: "center", padding: "3px 10px 3px 16px", gap: 4 }}>
+                <button
+                  onClick={() => navigate(`/topics/${item.topicId}/studio`)}
+                  style={{
+                    flex: 1, background: "none", border: "none", color: "#c5bfff",
+                    fontSize: 12, textAlign: "left", cursor: "pointer", padding: "2px 0",
+                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  }}
+                  title={item.title}
+                >
+                  {item.title}
+                </button>
+                <button
+                  onClick={() => removeItem(item.topicId)}
+                  style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 12, padding: "2px 4px", flexShrink: 0 }}
+                  title="큐에서 제거"
+                >×</button>
+              </div>
+            ))}
+            {queueItems.length > 4 && (
+              <div style={{ padding: "2px 16px", fontSize: 11, color: "#666" }}>
+                +{queueItems.length - 4}개 더...
+              </div>
+            )}
+          </div>
+        )}
+
         <div style={{ marginTop: "auto", padding: "12px 16px", fontSize: 12, color: "#888" }}>
           백엔드: <span style={{ color: isConnected ? "#4caf50" : "#ff9800" }}>
             {isConnected ? "연결됨" : "연결 중..."}

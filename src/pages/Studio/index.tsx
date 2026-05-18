@@ -70,6 +70,11 @@ export default function Studio() {
     return off;
   }, [topicId]);
 
+  const topicIndex = useMemo(
+    () => Object.fromEntries(allTopics.map((t) => [t.title, t.id])),
+    [allTopics]
+  );
+
   if (loading) return (
     <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
       <ContentSkeleton />
@@ -87,11 +92,6 @@ export default function Studio() {
   const flashcard = contents.find((c) => c.type === 2);
   const quiz = contents.find((c) => c.type === 3);
   const mindmap = contents.find((c) => c.type === 4);
-
-  const topicIndex = useMemo(
-    () => Object.fromEntries(allTopics.map((t) => [t.title, t.id])),
-    [allTopics]
-  );
 
   const tabs = [
     { label: "요약", content: summary, isGenerating: topicActiveItems.some((i) => i.contentType === "Summary"), isFailed: topicFailedItems.find((f) => f.contentType === "Summary"), renderer: "markdown" },

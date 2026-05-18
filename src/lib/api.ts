@@ -262,6 +262,15 @@ export async function getSuggestedNextTopics(topicId: string): Promise<string[]>
   return apiGet<string[]>(`/topics/${topicId}/suggested-next`);
 }
 
+export interface WikiLinkGraph {
+  existing: { id: string; title: string }[];
+  missing: string[];
+}
+
+export async function getWikiLinks(topicId: string): Promise<WikiLinkGraph> {
+  return apiGet<WikiLinkGraph>(`/topics/${topicId}/wiki-links`);
+}
+
 // --- Learning Session API ---
 
 export interface LearningStats {

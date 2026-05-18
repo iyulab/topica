@@ -65,6 +65,45 @@ public static class GraphModule
                 .ToList());
         });
 
+        group.MapGet("/wiki-links", async (Guid topicId, ApplicationDbContext db, CancellationToken ct) =>
+        {
+            var bodies = await db.Contents
+                .Where(c => c.TopicId == topicId &&
+                       (c.Type == ContentType.Summary || c.Type == ContentType.Lecture))
+                .Select(c => c.Body)
+                .ToListAsync(ct);
+
+            if (bodies.Count == 0)
+                return Results.Ok(new { existing = Array.Empty<object>(), missing = Array.Empty<string>() });
+
+            var mentioned = bodies
+                .SelectMany(WikiLinkParser.Extract)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            if (mentioned.Count == 0)
+                return Results.Ok(new { existing = Array.Empty<object>(), missing = Array.Empty<string>() });
+
+            var allTopics = await db.Topics
+                .Select(t => new { t.Id, t.Title })
+                .ToListAsync(ct);
+
+            var existingLinked = allTopics
+                .Where(t => t.Id != topicId && mentioned.Contains(t.Title, StringComparer.OrdinalIgnoreCase))
+                .Select(t => new { id = t.Id, title = t.Title })
+                .ToList();
+
+            var existingTitles = existingLinked
+                .Select(t => t.title)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            var missing = mentioned
+                .Where(title => !existingTitles.Contains(title))
+                .OrderBy(t => t)
+                .ToList();
+
+            return Results.Ok(new { existing = (object)existingLinked, missing });
+        });
+
         // Full graph: topics + their tags + embedding presence
         app.MapGet("/graph", async (ApplicationDbContext db, TopicEmbeddingService svc, CancellationToken ct) =>
         {

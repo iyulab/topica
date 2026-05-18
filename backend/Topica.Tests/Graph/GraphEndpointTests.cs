@@ -82,6 +82,36 @@ public class GraphEndpointTests(TestWebAppFactory factory) : IClassFixture<TestW
         Assert.Equal(0, doc.RootElement.GetArrayLength());
     }
 
+    [Fact]
+    public async Task Get_WikiLinks_WhenNoContents_ReturnsEmptyBothArrays()
+    {
+        var client = factory.CreateClient();
+        var topicResp = await client.PostAsJsonAsync("/topics", new { Title = "WikiLinks_Empty_Test", UserLevel = 2 });
+        var topic = await topicResp.Content.ReadFromJsonAsync<TopicDto>();
+        Assert.NotNull(topic);
+
+        var res = await client.GetAsync($"/topics/{topic.Id}/wiki-links");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(body);
+        Assert.Equal(JsonValueKind.Array, doc.RootElement.GetProperty("existing").ValueKind);
+        Assert.Equal(0, doc.RootElement.GetProperty("existing").GetArrayLength());
+        Assert.Equal(JsonValueKind.Array, doc.RootElement.GetProperty("missing").ValueKind);
+        Assert.Equal(0, doc.RootElement.GetProperty("missing").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Get_WikiLinks_WhenTopicNotFound_ReturnsEmptyBothArrays()
+    {
+        var client = factory.CreateClient();
+        var res = await client.GetAsync($"/topics/{Guid.NewGuid()}/wiki-links");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(body);
+        Assert.Equal(0, doc.RootElement.GetProperty("existing").GetArrayLength());
+        Assert.Equal(0, doc.RootElement.GetProperty("missing").GetArrayLength());
+    }
+
     private record TopicDto(Guid Id);
     private record GraphTopicDto(Guid Id, string Title, int UserLevel, List<string> Tags, bool HasEmbedding);
 }

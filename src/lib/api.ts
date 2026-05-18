@@ -258,6 +258,10 @@ export async function getRelatedTopics(topicId: string): Promise<RelatedTopic[]>
   return apiGet<RelatedTopic[]>(`/topics/${topicId}/related`);
 }
 
+export async function getSuggestedNextTopics(topicId: string): Promise<string[]> {
+  return apiGet<string[]>(`/topics/${topicId}/suggested-next`);
+}
+
 // --- Learning Session API ---
 
 export interface LearningStats {

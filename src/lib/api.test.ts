@@ -110,4 +110,24 @@ describe("api.ts", () => {
     expect(settings.embeddingProvider).toBe("openai");
     expect(settings.hasApiKey).toBe(true);
   });
+
+  it("getSuggestedNextTopics returns array of strings", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ["딥러닝", "자연어처리"],
+    });
+    const { getSuggestedNextTopics } = await import("./api");
+    const result = await getSuggestedNextTopics("test-topic-id");
+    expect(result).toEqual(["딥러닝", "자연어처리"]);
+  });
+
+  it("getSuggestedNextTopics returns empty array when no suggestions", async () => {
+    globalThis.fetch = vi.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => [],
+    });
+    const { getSuggestedNextTopics } = await import("./api");
+    const result = await getSuggestedNextTopics("test-topic-id");
+    expect(result).toHaveLength(0);
+  });
 });

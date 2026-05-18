@@ -176,6 +176,49 @@ export async function clearChatHistory(topicId: string): Promise<void> {
   return apiDelete(`/topics/${topicId}/chat`);
 }
 
+export async function* streamChatMessage(
+  topicId: string,
+  message: string,
+  signal?: AbortSignal
+): AsyncGenerator<{ delta?: string; done?: boolean; msg?: ChatMessage }> {
+  const url = await getBaseUrl();
+  const res = await fetch(`${url}/topics/${topicId}/chat/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message }),
+    signal,
+  });
+  if (!res.ok || !res.body) throw new Error(`Chat stream failed: ${res.status}`);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      const data = line.replace(/^data: /, "").trim();
+      if (!data) continue;
+      try {
+        const parsed = JSON.parse(data) as { delta?: string; done?: boolean; message?: ChatMessage };
+        if (parsed.done) {
+          yield { done: true, msg: parsed.message };
+          return;
+        }
+        if (parsed.delta) yield { delta: parsed.delta };
+      } catch {
+        // ignore malformed
+      }
+    }
+  }
+}
+
 // --- Survey API ---
 
 export async function* surveyStream(topicId: string, signal?: AbortSignal): AsyncGenerator<string> {

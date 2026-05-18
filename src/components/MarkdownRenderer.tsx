@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import DOMPurify from "dompurify";
-import { render as renderDeclart } from "@iyulab/declart-web";
 import "@iyulab/u-widgets";
 import type { UWidgetSpec } from "@iyulab/u-widgets";
 
@@ -40,17 +39,20 @@ function DeclartBlock({ code }: { code: string }) {
   useEffect(() => {
     if (!ref.current) return;
     const normalized = normalizeDeclart(code);
-    try {
-      const rawSvg = renderDeclart(normalized, "default");
-      const cleanSvg = DOMPurify.sanitize(rawSvg, {
-        USE_PROFILES: { svg: true, svgFilters: true },
-      });
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(cleanSvg, "image/svg+xml");
-      ref.current.replaceChildren(doc.documentElement.cloneNode(true));
-    } catch {
-      setFailed(true);
-    }
+    import("@iyulab/declart-web").then(({ render: renderDeclart }) => {
+      if (!ref.current) return;
+      try {
+        const rawSvg = renderDeclart(normalized, "default");
+        const cleanSvg = DOMPurify.sanitize(rawSvg, {
+          USE_PROFILES: { svg: true, svgFilters: true },
+        });
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(cleanSvg, "image/svg+xml");
+        ref.current.replaceChildren(doc.documentElement.cloneNode(true));
+      } catch {
+        setFailed(true);
+      }
+    }).catch(() => setFailed(true));
   }, [code]);
 
   if (failed) {

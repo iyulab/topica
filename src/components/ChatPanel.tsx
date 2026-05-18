@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { getChatHistory, sendChatMessage, clearChatHistory, type ChatMessage } from "../lib/api";
+import { getChatHistory, streamChatMessage, clearChatHistory, type ChatMessage } from "../lib/api";
 import MarkdownRenderer from "./MarkdownRenderer";
 
 interface Props {
@@ -27,22 +27,47 @@ export default function ChatPanel({ topicId }: Props) {
     const text = input.trim();
     if (!text || sending) return;
 
-    const optimistic: ChatMessage = {
-      id: `tmp-${Date.now()}`,
+    const userMsg: ChatMessage = {
+      id: `tmp-user-${Date.now()}`,
       topicId,
       role: 0,
       message: text,
       createdAt: new Date().toISOString(),
     };
-    setMessages((prev) => [...prev, optimistic]);
+    const streamingId = `tmp-streaming-${Date.now()}`;
+    setMessages((prev) => [...prev, userMsg]);
     setInput("");
     setSending(true);
 
     try {
-      const response = await sendChatMessage(topicId, text);
-      setMessages((prev) => [...prev, response]);
+      let started = false;
+      for await (const chunk of streamChatMessage(topicId, text)) {
+        if (chunk.done && chunk.msg) {
+          setMessages((prev) =>
+            prev.map((m) => (m.id === streamingId ? chunk.msg! : m))
+          );
+        } else if (chunk.delta) {
+          if (!started) {
+            started = true;
+            const placeholder: ChatMessage = {
+              id: streamingId,
+              topicId,
+              role: 1,
+              message: chunk.delta,
+              createdAt: new Date().toISOString(),
+            };
+            setMessages((prev) => [...prev, placeholder]);
+          } else {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === streamingId ? { ...m, message: m.message + chunk.delta } : m
+              )
+            );
+          }
+        }
+      }
     } catch {
-      setMessages((prev) => prev.filter((m) => m.id !== optimistic.id));
+      setMessages((prev) => prev.filter((m) => m.id !== userMsg.id && m.id !== streamingId));
       setInput(text);
     } finally {
       setSending(false);
@@ -106,7 +131,7 @@ export default function ChatPanel({ topicId }: Props) {
             </div>
           </div>
         ))}
-        {sending && (
+        {sending && !messages.some((m) => m.id.startsWith("tmp-streaming-")) && (
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
             <div style={{
               padding: "10px 14px",

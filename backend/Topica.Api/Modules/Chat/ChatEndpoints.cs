@@ -1,4 +1,15 @@
+using System.Text;
+using System.Text.Json;
+using Topica.Core.Entities;
+
 namespace Topica.Api.Modules.Chat;
+
+public record ChatStreamChunk
+{
+    public string? Delta { get; init; }
+    public bool Done { get; init; }
+    public ChatSession? Message { get; init; }
+}
 
 public static class ChatEndpoints
 {
@@ -25,6 +36,20 @@ public static class ChatEndpoints
             catch (KeyNotFoundException)
             {
                 return Results.NotFound();
+            }
+        });
+
+        group.MapPost("/stream", async (Guid topicId, ChatRequest req, ChatService svc, HttpContext ctx, CancellationToken ct) =>
+        {
+            ctx.Response.ContentType = "text/event-stream; charset=utf-8";
+            ctx.Response.Headers.CacheControl = "no-cache";
+            ctx.Response.Headers.Connection = "keep-alive";
+
+            await foreach (var chunk in svc.SendStreamAsync(topicId, req.Message, ct))
+            {
+                var data = JsonSerializer.Serialize(chunk, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                await ctx.Response.WriteAsync($"data: {data}\n\n", Encoding.UTF8, ct);
+                await ctx.Response.Body.FlushAsync(ct);
             }
         });
 

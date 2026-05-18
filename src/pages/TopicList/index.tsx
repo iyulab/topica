@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createTopic, deleteTopic, getTopics, type Topic } from "../../lib/api";
+import { createTopic, deleteTopic, getTopics, getReviewSuggestions, type Topic } from "../../lib/api";
 import { useTopicStore, useQueueStore } from "../../lib/store";
 import LevelBadge from "../../components/LevelBadge";
 import { TopicListSkeleton } from "../../components/SkeletonLoader";
@@ -18,6 +18,7 @@ export default function TopicList() {
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [reviewIds, setReviewIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setLoadError(null);
@@ -26,6 +27,9 @@ export default function TopicList() {
       .then(setTopics)
       .catch(() => setLoadError("토픽 목록을 불러오지 못했습니다."))
       .finally(() => setLoading(false));
+    getReviewSuggestions()
+      .then((list) => setReviewIds(new Set(list.map((r) => r.id))))
+      .catch(() => {});
   }, [setTopics, loadKey]);
 
   const handleAdd = async () => {
@@ -258,6 +262,7 @@ export default function TopicList() {
           )}
           <TopicListWithQueue
             topics={filteredTopics}
+            reviewIds={reviewIds}
             onOpen={(id) => navigate(`/topics/${id}/studio`)}
             onDelete={(id) => {
               const topic = topics.find((t) => t.id === id);
@@ -272,10 +277,12 @@ export default function TopicList() {
 
 function TopicListWithQueue({
   topics,
+  reviewIds,
   onOpen,
   onDelete,
 }: {
   topics: Topic[];
+  reviewIds: Set<string>;
   onOpen: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
@@ -289,6 +296,7 @@ function TopicListWithQueue({
             key={topic.id}
             topic={topic}
             activeCount={activeCount}
+            needsReview={reviewIds.has(topic.id)}
             onOpen={() => onOpen(topic.id)}
             onDelete={() => onDelete(topic.id)}
           />
@@ -301,11 +309,13 @@ function TopicListWithQueue({
 function TopicCard({
   topic,
   activeCount,
+  needsReview,
   onOpen,
   onDelete,
 }: {
   topic: Topic;
   activeCount: number;
+  needsReview: boolean;
   onOpen: () => void;
   onDelete: () => void;
 }) {
@@ -324,7 +334,22 @@ function TopicCard({
       onClick={onOpen}
     >
       <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 600, color: "#222", fontSize: 15 }}>{topic.title}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ fontWeight: 600, color: "#222", fontSize: 15 }}>{topic.title}</span>
+          {needsReview && (
+            <span style={{
+              padding: "1px 7px",
+              background: "#fff0f0",
+              border: "1px solid #ffb3b3",
+              borderRadius: 10,
+              fontSize: 11,
+              color: "#c0392b",
+              whiteSpace: "nowrap",
+            }}>
+              복습 필요
+            </span>
+          )}
+        </div>
         {topic.description && (
           <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{topic.description}</div>
         )}

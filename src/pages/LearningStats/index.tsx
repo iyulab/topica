@@ -3,8 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { UWidget } from "@iyulab/u-widgets/react";
 import type { UWidgetSpec } from "@iyulab/u-widgets";
 import {
-  getLearningStats, getPathSuggestions, getLearningGraphData,
-  type LearningStats, type PathSuggestion, type LearningGraphData,
+  getLearningStats, getPathSuggestions, getLearningGraphData, getReviewSuggestions,
+  type LearningStats, type PathSuggestion, type LearningGraphData, type ReviewSuggestion,
 } from "../../lib/api";
 
 // --- Learning Path Graph SVG ---
@@ -137,6 +137,7 @@ export default function LearningStats() {
   const [retryKey, setRetryKey] = useState(0);
   const [pathSuggestions, setPathSuggestions] = useState<PathSuggestion[]>([]);
   const [graphData, setGraphData] = useState<LearningGraphData | null>(null);
+  const [reviewSuggestions, setReviewSuggestions] = useState<ReviewSuggestion[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -156,6 +157,9 @@ export default function LearningStats() {
     getLearningGraphData()
       .then(data => { if (!cancelled) setGraphData(data); })
       .catch(() => { if (!cancelled) setGraphData(null); });
+    getReviewSuggestions()
+      .then(data => { if (!cancelled) setReviewSuggestions(data); })
+      .catch(() => { if (!cancelled) setReviewSuggestions([]); });
     return () => { cancelled = true; };
   }, []);
 
@@ -297,6 +301,42 @@ export default function LearningStats() {
                 onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
               >
                 {title} →
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {reviewSuggestions.length > 0 && (
+        <div style={{
+          marginTop: 16,
+          padding: "14px 18px",
+          background: "#fff",
+          borderRadius: 10,
+          border: "1px solid #ffd6d6",
+        }}>
+          <p style={{ margin: "0 0 10px", fontSize: 12, color: "#888" }}>
+            복습이 필요한 토픽 (퀴즈 평균 70% 미만)
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+            {reviewSuggestions.map(({ id, title, avgScore }) => (
+              <button
+                key={id}
+                onClick={() => navigate(`/topics/${id}/studio`)}
+                style={{
+                  padding: "5px 14px",
+                  background: "#fff",
+                  border: "1px solid #ffb3b3",
+                  borderRadius: 20,
+                  fontSize: 13,
+                  color: "#c0392b",
+                  cursor: "pointer",
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#fff5f5")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
+                title={`평균 점수: ${avgScore}%`}
+              >
+                {title} ({avgScore}%)
               </button>
             ))}
           </div>

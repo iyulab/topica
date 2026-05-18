@@ -9,6 +9,7 @@ public class Content
     public ContentType Type { get; set; }
     public int Level { get; set; }
     public string Body { get; set; } = string.Empty;
+    public string? PreviousBody { get; set; }
     public ContentStatus Status { get; set; } = ContentStatus.Draft;
     public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
 

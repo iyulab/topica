@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Options;
+using System.Runtime.CompilerServices;
 using Topica.Api.Modules.AI;
 using Topica.Core.Entities;
 using Topica.Core.Enums;
@@ -12,7 +13,7 @@ namespace Topica.Api.Modules.Contents;
 public class SummaryGenerator(
     IChatClient chatClient,
     IOptionsMonitor<AiSettings> options,
-    ApplicationDbContext db) : IContentGenerator
+    ApplicationDbContext db) : IStreamingContentGenerator
 {
     public ContentType Type => ContentType.Summary;
 
@@ -39,5 +40,27 @@ public class SummaryGenerator(
             Body = response.Text ?? string.Empty,
             Status = ContentStatus.Published,
         };
+    }
+
+    public async IAsyncEnumerable<string> StreamAsync(
+        Topic topic,
+        IReadOnlyList<ResearchDoc> research,
+        int level,
+        [EnumeratorCancellation] CancellationToken ct = default)
+    {
+        var lang = options.CurrentValue.Language;
+        var ctx = PromptBuilder.ResearchContext(research, lang);
+        var existingTitles = await db.Topics
+            .Where(t => t.Id != topic.Id)
+            .Select(t => t.Title)
+            .ToListAsync(ct);
+        var prompt = PromptBuilder.Summary(topic, ctx, level, lang, existingTitles);
+
+        await foreach (var update in chatClient.GetStreamingResponseAsync(prompt, cancellationToken: ct))
+        {
+            var text = update.Text ?? string.Empty;
+            if (!string.IsNullOrEmpty(text))
+                yield return text;
+        }
     }
 }

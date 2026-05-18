@@ -90,6 +90,7 @@ export interface Content {
   type: number;
   level: number;
   body: string;
+  previousBody?: string;
   status: number;
   generatedAt: string;
 }
@@ -100,6 +101,50 @@ export async function getContents(topicId: string): Promise<Content[]> {
 
 export async function generateContent(topicId: string, type: number, level: number): Promise<Content> {
   return apiPost<Content>(`/topics/${topicId}/contents/generate`, { type, level });
+}
+
+export async function* streamContent(
+  topicId: string,
+  type: number,
+  level: number,
+  signal?: AbortSignal
+): AsyncGenerator<{ delta?: string; done?: boolean; content?: Content }> {
+  const url = await getBaseUrl();
+  const res = await fetch(`${url}/topics/${topicId}/contents/stream`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type, level }),
+    signal,
+  });
+  if (!res.ok || !res.body) throw new Error(`Content stream failed: ${res.status}`);
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+
+    const lines = buffer.split("\n\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      const data = line.replace(/^data: /, "").trim();
+      if (!data) continue;
+      try {
+        const parsed = JSON.parse(data) as { delta?: string; done?: boolean; content?: Content };
+        if (parsed.done) {
+          yield { done: true, content: parsed.content };
+          return;
+        }
+        if (parsed.delta) yield { delta: parsed.delta };
+      } catch {
+        // ignore malformed
+      }
+    }
+  }
 }
 
 // --- Settings API ---
@@ -344,6 +389,16 @@ export interface PathSuggestion {
 
 export async function getPathSuggestions(): Promise<PathSuggestion[]> {
   return apiGet<PathSuggestion[]>("/learning-sessions/path-suggestions");
+}
+
+export interface ReviewSuggestion {
+  id: string;
+  title: string;
+  avgScore: number;
+}
+
+export async function getReviewSuggestions(): Promise<ReviewSuggestion[]> {
+  return apiGet<ReviewSuggestion[]>("/learning-sessions/review-suggestions");
 }
 
 export interface LearningGraphData {

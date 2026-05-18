@@ -83,6 +83,9 @@ namespace Topica.Infrastructure.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("PreviousBody")
+                        .HasColumnType("TEXT");
+
                     b.Property<DateTime>("GeneratedAt")
                         .HasColumnType("TEXT");
 

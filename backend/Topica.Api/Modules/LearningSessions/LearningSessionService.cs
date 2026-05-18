@@ -62,4 +62,29 @@ public class LearningSessionService(ApplicationDbContext db)
             streak7d,
             scoreByTopic);
     }
+
+    public async Task<ReviewSuggestionDto[]> GetReviewSuggestionsAsync(CancellationToken ct = default)
+    {
+        var below70 = await db.LearningSessions
+            .Where(s => s.QuizScore.HasValue)
+            .GroupBy(s => s.TopicId)
+            .Select(g => new { TopicId = g.Key, AvgScore = g.Average(s => (double)s.QuizScore!.Value) })
+            .ToListAsync(ct);
+
+        var belowThreshold = below70.Where(x => x.AvgScore < 70.0).ToList();
+        if (belowThreshold.Count == 0) return [];
+
+        var ids = belowThreshold.Select(x => x.TopicId).ToList();
+        var titles = await db.Topics
+            .Where(t => ids.Contains(t.Id))
+            .Select(t => new { t.Id, t.Title })
+            .ToListAsync(ct);
+
+        var titleMap = titles.ToDictionary(t => t.Id);
+        return belowThreshold
+            .Where(x => titleMap.ContainsKey(x.TopicId))
+            .Select(x => new ReviewSuggestionDto(x.TopicId, titleMap[x.TopicId].Title, Math.Round(x.AvgScore, 1)))
+            .OrderBy(x => x.AvgScore)
+            .ToArray();
+    }
 }

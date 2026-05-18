@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { generateContent, getContents, getLevelRecommendation, getRelatedTopics, getTags, getTopics, postLearningSession, type Content, type LevelRecommendation, type RelatedTopic, type Topic } from "../../lib/api";
+import { generateContent, getContents, getLevelRecommendation, getRelatedTopics, getTags, getTopics, postLearningSession, streamContent, type Content, type LevelRecommendation, type RelatedTopic, type Topic } from "../../lib/api";
 import { topicaWs, type WsMessage } from "../../lib/ws";
 import { useQueueStore } from "../../lib/store";
 import LevelBadge from "../../components/LevelBadge";
@@ -24,6 +24,9 @@ export default function Studio() {
   contentsRef.current = contents;
   const [showSurvey, setShowSurvey] = useState(false);
   const [regenerating, setRegenerating] = useState<number | null>(null);
+  const [streamingText, setStreamingText] = useState<string | null>(null);
+  const streamAbortRef = useRef<AbortController | null>(null);
+  const [showPrevious, setShowPrevious] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [relatedTopics, setRelatedTopics] = useState<RelatedTopic[]>([]);
   const [allTopics, setAllTopics] = useState<{ id: string; title: string }[]>([]);
@@ -70,10 +73,45 @@ export default function Studio() {
     return off;
   }, [topicId]);
 
+  // Abort streaming on unmount
+  useEffect(() => () => { streamAbortRef.current?.abort(); }, []);
+
   const topicIndex = useMemo(
     () => Object.fromEntries(allTopics.map((t) => [t.title, t.id])),
     [allTopics]
   );
+
+  const handleRegenerate = async (tabIndex: number) => {
+    if (!topicId || !topic) return;
+    setRegenerating(tabIndex);
+    setStreamingText(null);
+    setShowPrevious(false);
+    if (tabIndex === 0 || tabIndex === 1) {
+      const abort = new AbortController();
+      streamAbortRef.current = abort;
+      try {
+        for await (const chunk of streamContent(topicId, tabIndex, topic.userLevel, abort.signal)) {
+          if (chunk.done && chunk.content) {
+            setContents((cs) => [...cs.filter((c) => c.type !== tabIndex), chunk.content!]);
+            setStreamingText(null);
+          } else if (chunk.delta) {
+            setStreamingText((prev) => (prev ?? "") + chunk.delta);
+          }
+        }
+      } finally {
+        setRegenerating(null);
+        setStreamingText(null);
+        streamAbortRef.current = null;
+      }
+    } else {
+      try {
+        const updated = await generateContent(topicId, tabIndex, topic.userLevel);
+        setContents((cs) => [...cs.filter((c) => c.type !== tabIndex), updated]);
+      } finally {
+        setRegenerating(null);
+      }
+    }
+  };
 
   if (loading) return (
     <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
@@ -179,7 +217,7 @@ export default function Studio() {
         {tabs.map((tab, i) => (
           <button
             key={i}
-            onClick={() => setActiveTab(i)}
+            onClick={() => { setActiveTab(i); setShowPrevious(false); }}
             style={{
               padding: "8px 16px",
               border: "none",
@@ -196,33 +234,31 @@ export default function Studio() {
           </button>
         ))}
         {tabs[activeTab].renderer !== "chat" && topicId && (
-          <button
-            onClick={async () => {
-              setRegenerating(activeTab);
-              try {
-                const updated = await generateContent(topicId, activeTab, topic!.userLevel);
-                setContents((cs) => {
-                  const filtered = cs.filter((c) => c.type !== activeTab);
-                  return [...filtered, updated];
-                });
-              } finally {
-                setRegenerating(null);
-              }
-            }}
-            disabled={regenerating === activeTab || tabs[activeTab].isGenerating}
-            style={{
-              marginLeft: "auto",
-              padding: "4px 10px",
-              border: "1px solid #ddd",
-              borderRadius: 6,
-              background: "none",
-              color: "#888",
-              cursor: regenerating === activeTab ? "not-allowed" : "pointer",
-              fontSize: 12,
-            }}
-          >
-            {regenerating === activeTab ? "⏳" : "🔄"} 재생성
-          </button>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+            {tabs[activeTab].content?.previousBody && regenerating !== activeTab && (
+              <button
+                onClick={() => setShowPrevious((v) => !v)}
+                style={{
+                  padding: "4px 10px", border: "1px solid #ddd",
+                  borderRadius: 6, background: showPrevious ? "#f0eeff" : "none",
+                  color: showPrevious ? "#6c63ff" : "#888", cursor: "pointer", fontSize: 12,
+                }}
+              >
+                {showPrevious ? "현재 버전" : "이전 버전"}
+              </button>
+            )}
+            <button
+              onClick={() => handleRegenerate(activeTab)}
+              disabled={regenerating === activeTab || tabs[activeTab].isGenerating}
+              style={{
+                padding: "4px 10px", border: "1px solid #ddd",
+                borderRadius: 6, background: "none",
+                color: "#888", cursor: regenerating === activeTab ? "not-allowed" : "pointer", fontSize: 12,
+              }}
+            >
+              {regenerating === activeTab ? "⏳" : "🔄"} 재생성
+            </button>
+          </div>
         )}
       </div>
 
@@ -230,6 +266,11 @@ export default function Studio() {
       {tabs[activeTab].renderer === "chat" ? (
         <div style={{ background: "#fff", borderRadius: 8, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
           {topicId && <ChatPanel topicId={topicId} />}
+        </div>
+      ) : regenerating === activeTab && streamingText !== null ? (
+        <div style={{ background: "#fff", borderRadius: 8, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
+          <div style={{ color: "#6c63ff", fontSize: 12, marginBottom: 12 }}>✦ AI가 콘텐츠를 생성하고 있습니다...</div>
+          <MarkdownRenderer content={streamingText} topicIndex={topicIndex} />
         </div>
       ) : tabs[activeTab].content ? (
         <div style={{
@@ -267,7 +308,17 @@ export default function Studio() {
             <MindmapViewer body={tabs[activeTab].content!.body} />
           )}
           {tabs[activeTab].renderer === "markdown" && (
-            <MarkdownRenderer content={tabs[activeTab].content!.body} topicIndex={topicIndex} />
+            <>
+              {showPrevious && tabs[activeTab].content!.previousBody && (
+                <div style={{ marginBottom: 8, padding: "4px 10px", background: "#fff9e6", border: "1px solid #ffe58f", borderRadius: 6, fontSize: 12, color: "#7d5c00" }}>
+                  📜 이전 버전 — 재생성 전 내용입니다.
+                </div>
+              )}
+              <MarkdownRenderer
+                content={showPrevious && tabs[activeTab].content!.previousBody ? tabs[activeTab].content!.previousBody! : tabs[activeTab].content!.body}
+                topicIndex={topicIndex}
+              />
+            </>
           )}
           {tabs[activeTab].renderer === "markdown" && (activeTab === 0 || activeTab === 1) && topicId && (
             <>
@@ -308,19 +359,7 @@ export default function Studio() {
               <div style={{ color: "#d00", marginBottom: 8 }}>❌ 생성 실패</div>
               <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>{tabs[activeTab].isFailed!.errorMessage}</div>
               <button
-                onClick={async () => {
-                  if (!topicId) return;
-                  setRegenerating(activeTab);
-                  try {
-                    const updated = await generateContent(topicId, activeTab, topic!.userLevel);
-                    setContents((cs) => {
-                      const filtered = cs.filter((c) => c.type !== activeTab);
-                      return [...filtered, updated];
-                    });
-                  } finally {
-                    setRegenerating(null);
-                  }
-                }}
+                onClick={() => handleRegenerate(activeTab)}
                 disabled={regenerating === activeTab}
                 style={{
                   padding: "6px 16px", background: "#fff3f3", border: "1px solid #d00",

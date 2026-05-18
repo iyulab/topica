@@ -28,6 +28,9 @@ public static class LearningSessionModule
         group.MapGet("/stats", async (LearningSessionService svc, CancellationToken ct) =>
             Results.Ok(await svc.GetStatsAsync(ct)));
 
+        group.MapGet("/review-suggestions", async (LearningSessionService svc, CancellationToken ct) =>
+            Results.Ok(await svc.GetReviewSuggestionsAsync(ct)));
+
         group.MapGet("/path-suggestions", async (ApplicationDbContext db, CancellationToken ct) =>
         {
             var studiedIds = await db.LearningSessions
@@ -145,6 +148,7 @@ public static class LearningSessionModule
 }
 
 public record LearningSessionRequest(Guid TopicId, int DurationSeconds, int? QuizScore, int FlashcardsStudied);
+public record ReviewSuggestionDto(Guid Id, string Title, double AvgScore);
 public record LearningStatsDto(
     int TotalTopicsStudied,
     int TotalStudyMinutes,

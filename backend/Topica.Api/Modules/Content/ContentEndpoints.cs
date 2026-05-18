@@ -1,14 +1,26 @@
 using Microsoft.AspNetCore.Mvc;
+using System.Text;
+using System.Text.Json;
+using Topica.Core.Entities;
 using Topica.Core.Enums;
 using Topica.Core.Interfaces;
 
 namespace Topica.Api.Modules.Contents;
+
+public record ContentStreamChunk
+{
+    public string? Delta { get; init; }
+    public bool Done { get; init; }
+    public Content? Content { get; init; }
+}
 
 public static class ContentEndpoints
 {
     public static IServiceCollection AddContentModule(this IServiceCollection services)
     {
         services.AddScoped<ContentService>();
+        services.AddScoped<IStreamingContentGenerator, SummaryGenerator>();
+        services.AddScoped<IStreamingContentGenerator, LectureGenerator>();
         services.AddScoped<IContentGenerator, SummaryGenerator>();
         services.AddScoped<IContentGenerator, LectureGenerator>();
         services.AddScoped<IContentGenerator, FlashcardGenerator>();
@@ -50,6 +62,25 @@ public static class ContentEndpoints
             catch (NotSupportedException ex)
             {
                 return Results.BadRequest(ex.Message);
+            }
+        });
+
+        group.MapPost("/stream", async (
+            Guid topicId,
+            [FromBody] GenerateContentRequest req,
+            ContentService svc,
+            HttpContext ctx,
+            CancellationToken ct) =>
+        {
+            ctx.Response.ContentType = "text/event-stream; charset=utf-8";
+            ctx.Response.Headers.CacheControl = "no-cache";
+            ctx.Response.Headers.Connection = "keep-alive";
+
+            await foreach (var chunk in svc.StreamGenerateAsync(topicId, req.Type, req.Level, ct))
+            {
+                var data = JsonSerializer.Serialize(chunk, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                await ctx.Response.WriteAsync($"data: {data}\n\n", Encoding.UTF8, ct);
+                await ctx.Response.Body.FlushAsync(ct);
             }
         });
 

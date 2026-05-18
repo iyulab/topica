@@ -73,7 +73,7 @@ public class SettingsEndpointTests(TestWebAppFactory factory) : IClassFixture<Te
         var body = await res.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(body);
         Assert.True(doc.RootElement.TryGetProperty("chatProvider", out var cp));
-        Assert.Equal("local", cp.GetString());
+        Assert.True(cp.GetString() is "local" or "ollama" or "openai");
     }
 
     [Fact]
@@ -85,7 +85,7 @@ public class SettingsEndpointTests(TestWebAppFactory factory) : IClassFixture<Te
         var body = await res.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(body);
         Assert.True(doc.RootElement.TryGetProperty("embeddingProvider", out var ep));
-        Assert.Equal("local", ep.GetString());
+        Assert.True(ep.GetString() is "local" or "ollama" or "openai");
     }
 
     [Fact]

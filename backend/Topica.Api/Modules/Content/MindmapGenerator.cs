@@ -27,7 +27,7 @@ public class MindmapGenerator(IChatClient chatClient, IOptionsMonitor<AiSettings
             TopicId = topic.Id,
             Type = ContentType.Mindmap,
             Level = level,
-            Body = response.Text ?? string.Empty,
+            Body = MindmapNormalizer.Normalize(response.Text ?? string.Empty),
             Status = ContentStatus.Published,
         };
     }

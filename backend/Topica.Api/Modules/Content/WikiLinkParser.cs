@@ -20,7 +20,12 @@ public static class WikiLinkParser
         markdown ??= string.Empty;
         var stripped = CodeBlockRe.Replace(markdown, " ");
         return WikiLinkRe.Matches(stripped)
-            .Select(m => m.Groups[1].Value.Trim())
+            .Select(m =>
+            {
+                var raw = m.Groups[1].Value.Trim();
+                var pipe = raw.IndexOf('|');
+                return pipe >= 0 ? raw[..pipe].Trim() : raw;
+            })
             .Where(t => !string.IsNullOrWhiteSpace(t))
             .ToHashSet();
     }

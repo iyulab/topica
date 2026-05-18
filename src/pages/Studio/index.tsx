@@ -270,7 +270,22 @@ export default function Studio() {
             <MarkdownRenderer content={tabs[activeTab].content!.body} topicIndex={topicIndex} />
           )}
           {tabs[activeTab].renderer === "markdown" && (activeTab === 0 || activeTab === 1) && topicId && (
-            <TopicSuggestions topicId={topicId} />
+            <>
+              {!tabs[activeTab].content!.body.includes("[[") && allTopics.length > 1 && (
+                <div style={{
+                  marginTop: 16,
+                  padding: "10px 14px",
+                  background: "#fffbe6",
+                  border: "1px solid #ffe58f",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  color: "#7d5c00",
+                }}>
+                  💡 이 콘텐츠는 다른 토픽과의 연결 정보가 없습니다. 🔄 재생성하면 관련 토픽 링크가 추가됩니다.
+                </div>
+              )}
+              <TopicSuggestions topicId={topicId} />
+            </>
           )}
         </div>
       ) : (

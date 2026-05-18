@@ -22,4 +22,15 @@ describe("preprocessWikiLinks", () => {
     const result = preprocessWikiLinks("일반 텍스트", { "머신러닝": "id1" });
     expect(result).toBe("일반 텍스트");
   });
+
+  it("alias 있는 토픽은 표시명으로 링크", () => {
+    const index = { "머신러닝": "ml-id" };
+    const result = preprocessWikiLinks("[[머신러닝|ML]] 소개", index);
+    expect(result).toBe("[ML](topic:ml-id) 소개");
+  });
+
+  it("alias 있는 미존재 토픽은 표시명으로 볼드체", () => {
+    const result = preprocessWikiLinks("[[딥러닝|DL]] 개요", {});
+    expect(result).toBe("**DL** 개요");
+  });
 });

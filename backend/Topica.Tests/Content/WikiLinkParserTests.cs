@@ -71,4 +71,21 @@ public class WikiLinkParserTests
         var result = WikiLinkParser.Extract(null!);
         Assert.Empty(result);
     }
+
+    [Fact]
+    public void Extract_AliasLink_ReturnsTopicNameOnly()
+    {
+        var result = WikiLinkParser.Extract("[[머신러닝|ML]] 개요");
+        Assert.Contains("머신러닝", result);
+        Assert.DoesNotContain("ML", result);
+        Assert.Single(result);
+    }
+
+    [Fact]
+    public void Extract_AliasLinkWithWhitespace_TrimsTopicName()
+    {
+        var result = WikiLinkParser.Extract("[[ 자연어처리 | NLP ]]");
+        Assert.Contains("자연어처리", result);
+        Assert.Single(result);
+    }
 }

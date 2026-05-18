@@ -29,7 +29,7 @@ function computeTagClusters(topics: GraphTopic[]): {
   const assignments = new Map<string, number>();
 
   for (const t of topics) {
-    const primary = t.tags[0];
+    const primary = t.tags[0] ?? t.tags[1];
     if (!primary) { assignments.set(t.id, -1); continue; }
     if (!tagToCluster.has(primary)) {
       tagToCluster.set(primary, next);
@@ -224,22 +224,24 @@ export default function GraphPage() {
           </svg>
           {clusterTags.size > 0 && (
             <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 10 }}>
-              {[...clusterTags.entries()].map(([id, tag]) => {
-                const ci = id % CLUSTER_FILLS.length;
-                const count = visibleTopics.filter((t) => clusterAssignments.get(t.id) === id).length;
-                return (
-                  <span
-                    key={id}
-                    style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#555" }}
-                  >
-                    <span style={{
-                      width: 10, height: 10, borderRadius: "50%",
-                      background: CLUSTER_STROKES[ci], display: "inline-block",
-                    }} />
-                    {tag} ({count})
-                  </span>
-                );
-              })}
+              {[...clusterTags.entries()]
+                .map(([id, tag]) => ({ id, tag, count: visibleTopics.filter((t) => clusterAssignments.get(t.id) === id).length }))
+                .filter(({ count }) => count > 0)
+                .map(({ id, tag, count }) => {
+                  const ci = id % CLUSTER_FILLS.length;
+                  return (
+                    <span
+                      key={id}
+                      style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#555" }}
+                    >
+                      <span style={{
+                        width: 10, height: 10, borderRadius: "50%",
+                        background: CLUSTER_STROKES[ci], display: "inline-block",
+                      }} />
+                      {tag} ({count})
+                    </span>
+                  );
+                })}
             </div>
           )}
         </div>

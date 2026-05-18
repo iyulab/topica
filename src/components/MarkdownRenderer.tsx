@@ -16,9 +16,11 @@ export function preprocessWikiLinks(
   topicIndex: Record<string, string>
 ): string {
   return content.replace(/\[\[([^\]\n]+)\]\]/g, (_, raw: string) => {
-    const title = raw.trim();
+    const pipeIdx = raw.indexOf("|");
+    const title = (pipeIdx >= 0 ? raw.slice(0, pipeIdx) : raw).trim();
+    const display = (pipeIdx >= 0 ? raw.slice(pipeIdx + 1) : raw).trim();
     const id = topicIndex[title];
-    return id ? `[${title}](topic:${id})` : `**${title}**`;
+    return id ? `[${display}](topic:${id})` : `**${display}**`;
   });
 }
 

@@ -55,6 +55,33 @@ public class GraphEndpointTests(TestWebAppFactory factory) : IClassFixture<TestW
         Assert.Equal(JsonValueKind.Array, doc.RootElement.ValueKind);
     }
 
+    [Fact]
+    public async Task Get_SuggestedNext_WhenNoContents_ReturnsEmptyArray()
+    {
+        var client = factory.CreateClient();
+        var topicResp = await client.PostAsJsonAsync("/topics", new { Title = "SuggestedNext_Empty_Test", UserLevel = 3 });
+        var topic = await topicResp.Content.ReadFromJsonAsync<TopicDto>();
+        Assert.NotNull(topic);
+
+        var res = await client.GetAsync($"/topics/{topic.Id}/suggested-next");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(body);
+        Assert.Equal(JsonValueKind.Array, doc.RootElement.ValueKind);
+        Assert.Equal(0, doc.RootElement.GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Get_SuggestedNext_WhenTopicNotFound_ReturnsEmptyArray()
+    {
+        var client = factory.CreateClient();
+        var res = await client.GetAsync($"/topics/{Guid.NewGuid()}/suggested-next");
+        Assert.Equal(HttpStatusCode.OK, res.StatusCode);
+        var body = await res.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(body);
+        Assert.Equal(0, doc.RootElement.GetArrayLength());
+    }
+
     private record TopicDto(Guid Id);
     private record GraphTopicDto(Guid Id, string Title, int UserLevel, List<string> Tags, bool HasEmbedding);
 }

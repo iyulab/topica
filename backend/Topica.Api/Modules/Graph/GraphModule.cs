@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Topica.Api.Modules.Contents;
+using Topica.Core.Enums;
 using Topica.Infrastructure.Data;
 
 namespace Topica.Api.Modules.Graph;
@@ -34,6 +36,33 @@ public static class GraphModule
                 .ToList();
 
             return Results.Ok(result);
+        });
+
+        group.MapGet("/suggested-next", async (Guid topicId, ApplicationDbContext db, CancellationToken ct) =>
+        {
+            var bodies = await db.Contents
+                .Where(c => c.TopicId == topicId &&
+                       (c.Type == ContentType.Summary || c.Type == ContentType.Lecture))
+                .Select(c => c.Body)
+                .ToListAsync(ct);
+
+            if (bodies.Count == 0) return Results.Ok(Array.Empty<string>());
+
+            var mentioned = bodies
+                .SelectMany(WikiLinkParser.Extract)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            if (mentioned.Count == 0) return Results.Ok(Array.Empty<string>());
+
+            var existingTitles = (await db.Topics
+                .Select(t => t.Title)
+                .ToListAsync(ct))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return Results.Ok(mentioned
+                .Where(t => !existingTitles.Contains(t))
+                .OrderBy(t => t)
+                .ToList());
         });
 
         // Full graph: topics + their tags + embedding presence

@@ -20,67 +20,87 @@ public static class PromptBuilder
         return string.Join("\n---\n", chunks.Select((c, i) => $"[Chunk {i + 1}]\n{c}"));
     }
 
-    public static string Summary(Topic topic, string researchContext, int level, string language) => language == "en"
-        ? $"""
-            You are an educational content writer. Write a structured markdown summary for the topic below.
+    public static string Summary(
+        Topic topic,
+        string researchContext,
+        int level,
+        string language,
+        IReadOnlyList<string>? existingTopicTitles = null)
+    {
+        var linkHint = BuildLinkHint(existingTopicTitles, language);
 
-            Topic: {topic.Title}
-            Target level: {level}/10 (1=absolute beginner, 10=expert)
+        return language == "en"
+            ? $"""
+                You are an educational content writer. Write a structured markdown summary for the topic below.
 
-            Reference material:
-            {researchContext}
+                Topic: {topic.Title}
+                Target level: {level}/10 (1=absolute beginner, 10=expert)
 
-            Requirements:
-            - Concise, structured markdown format
-            - Include overview, key concepts (bullet points), and why it matters
-            - Respond with markdown only (no extra explanation)
-            """
-        : $"""
-            당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 마크다운 요약을 작성하세요.
+                Reference material:
+                {researchContext}
 
-            토픽: {topic.Title}
-            대상 수준: {level}/10 (1=완전 초보, 10=전문가)
+                Requirements:
+                - Concise, structured markdown format
+                - Include overview, key concepts (bullet points), and why it matters
+                - Respond with markdown only (no extra explanation){linkHint}
+                """
+            : $"""
+                당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 마크다운 요약을 작성하세요.
 
-            참고 자료:
-            {researchContext}
+                토픽: {topic.Title}
+                대상 수준: {level}/10 (1=완전 초보, 10=전문가)
 
-            요구사항:
-            - 간결하고 구조화된 마크다운 형식
-            - 개요, 핵심 개념(불릿 포인트), 중요한 이유 포함
-            - 마크다운만 응답 (다른 설명 불필요)
-            """;
+                참고 자료:
+                {researchContext}
 
-    public static string Lecture(Topic topic, string researchContext, int level, string language) => language == "en"
-        ? $"""
-            You are an educational content writer. Write a detailed lecture for the topic below.
+                요구사항:
+                - 간결하고 구조화된 마크다운 형식
+                - 개요, 핵심 개념(불릿 포인트), 중요한 이유 포함
+                - 마크다운만 응답 (다른 설명 불필요){linkHint}
+                """;
+    }
 
-            Topic: {topic.Title}
-            Target level: {level}/10
+    public static string Lecture(
+        Topic topic,
+        string researchContext,
+        int level,
+        string language,
+        IReadOnlyList<string>? existingTopicTitles = null)
+    {
+        var linkHint = BuildLinkHint(existingTopicTitles, language);
 
-            Reference material:
-            {researchContext}
+        return language == "en"
+            ? $"""
+                You are an educational content writer. Write a detailed lecture for the topic below.
 
-            Requirements:
-            - Detailed, educational markdown lecture format
-            - Include concept explanations, examples, and key term definitions
-            - Systematic structure with sections
-            - Respond with markdown only (no extra explanation)
-            """
-        : $"""
-            당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 상세 강해(Lecture)를 작성하세요.
+                Topic: {topic.Title}
+                Target level: {level}/10
 
-            토픽: {topic.Title}
-            대상 수준: {level}/10
+                Reference material:
+                {researchContext}
 
-            참고 자료:
-            {researchContext}
+                Requirements:
+                - Detailed, educational markdown lecture format
+                - Include concept explanations, examples, and key term definitions
+                - Systematic structure with sections
+                - Respond with markdown only (no extra explanation){linkHint}
+                """
+            : $"""
+                당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 상세 강의를 작성하세요.
 
-            요구사항:
-            - 상세하고 교육적인 마크다운 강의 자료 형식
-            - 개념 설명, 예시, 핵심 용어 정의 포함
-            - 섹션별 체계적 구조
-            - 마크다운만 응답 (다른 설명 불필요)
-            """;
+                토픽: {topic.Title}
+                대상 수준: {level}/10
+
+                참고 자료:
+                {researchContext}
+
+                요구사항:
+                - 상세하고 교육적인 마크다운 강의 자료 형식
+                - 개념 설명, 예시, 핵심 용어 정의 포함
+                - 섹션별 체계적 구조
+                - 마크다운만 응답 (다른 설명 불필요){linkHint}
+                """;
+    }
 
     public static string Flashcard(Topic topic, string researchContext, int level, string language) => language == "en"
         ? $$"""
@@ -233,6 +253,13 @@ public static class PromptBuilder
             label = '가지 2'
             parent = '루트'
             """;
+
+    private static string BuildLinkHint(IReadOnlyList<string>? titles, string language) =>
+        titles?.Count > 0
+            ? language == "en"
+                ? $"\nExisting topics list: {string.Join(", ", titles)}\nIf a concept in your response overlaps with a topic from the list, link it once using [[TopicName]] format."
+                : $"\n기존 학습 토픽 목록: {string.Join(", ", titles)}\n본문에서 해당 목록의 토픽과 겹치는 개념이 등장하면 [[토픽명]] 형식으로 한 번만 링크하세요."
+            : string.Empty;
 
     public static string TagSystem() =>
         """

@@ -16,6 +16,31 @@ interface NodePos {
   topic: GraphTopic;
 }
 
+const CLUSTER_FILLS   = ['#e8f0fe','#fde8f4','#e8fee8','#fef9e8','#e8fef9','#f0e8fe','#fee8e8','#e8fefe'];
+const CLUSTER_STROKES = ['#4285f4','#ea4c89','#34a853','#fbbc04','#00b0ff','#9c27b0','#ea4335','#00bcd4'];
+
+function computeTagClusters(topics: GraphTopic[]): {
+  assignments: Map<string, number>;
+  clusterTags: Map<number, string>;
+} {
+  const tagToCluster = new Map<string, number>();
+  const clusterTags = new Map<number, string>();
+  let next = 0;
+  const assignments = new Map<string, number>();
+
+  for (const t of topics) {
+    const primary = t.tags[0];
+    if (!primary) { assignments.set(t.id, -1); continue; }
+    if (!tagToCluster.has(primary)) {
+      tagToCluster.set(primary, next);
+      clusterTags.set(next, primary);
+      next++;
+    }
+    assignments.set(t.id, tagToCluster.get(primary)!);
+  }
+  return { assignments, clusterTags };
+}
+
 const W = 700;
 const H = 480;
 const R = 22;
@@ -89,6 +114,11 @@ export default function GraphPage() {
   }), [topics, tagFilter, hideNoEmbed, minLevel, maxLevel]);
 
   const nodes = useMemo(() => computeForceLayout(visibleTopics), [visibleTopics]);
+
+  const { assignments: clusterAssignments, clusterTags } = useMemo(
+    () => computeTagClusters(visibleTopics),
+    [visibleTopics]
+  );
 
   // Clear selection when selected topic is filtered out
   useEffect(() => {
@@ -167,17 +197,19 @@ export default function GraphPage() {
             {nodes.map((n) => {
               const isSelected = n.topic.id === selected;
               const isRelated = relatedIds.has(n.topic.id);
-              const hasEmbed = n.topic.hasEmbedding;
-              let fill = hasEmbed ? "#e8e5ff" : "#f5f5f5";
-              if (isSelected) fill = "#6c63ff";
-              if (isRelated) fill = "#c5f0d4";
+              const clusterId = clusterAssignments.get(n.topic.id) ?? -1;
+              const ci = clusterId >= 0 ? clusterId % CLUSTER_FILLS.length : -1;
+              let fill = ci >= 0 ? CLUSTER_FILLS[ci] : "#f5f5f5";
+              let strokeColor = ci >= 0 ? CLUSTER_STROKES[ci] : "#ccc";
+              if (isSelected) { fill = "#6c63ff"; strokeColor = "#4a42d4"; }
+              if (isRelated)  { fill = "#c5f0d4"; strokeColor = "#28a745"; }
               const textCol = isSelected ? "#fff" : "#333";
 
               return (
                 <g key={n.topic.id} onClick={() => setSelected(n.topic.id === selected ? null : n.topic.id)} style={{ cursor: "pointer" }}>
                   <circle cx={n.x} cy={n.y} r={R}
                     fill={fill}
-                    stroke={isSelected ? "#4a42d4" : isRelated ? "#28a745" : "#ccc"}
+                    stroke={strokeColor}
                     strokeWidth={isSelected ? 2.5 : 1.5}
                   />
                   <text x={n.x} y={n.y} textAnchor="middle" dominantBaseline="central"
@@ -190,6 +222,26 @@ export default function GraphPage() {
               );
             })}
           </svg>
+          {clusterTags.size > 0 && (
+            <div style={{ marginTop: 10, display: "flex", flexWrap: "wrap", gap: 10 }}>
+              {[...clusterTags.entries()].map(([id, tag]) => {
+                const ci = id % CLUSTER_FILLS.length;
+                const count = visibleTopics.filter((t) => clusterAssignments.get(t.id) === id).length;
+                return (
+                  <span
+                    key={id}
+                    style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: "#555" }}
+                  >
+                    <span style={{
+                      width: 10, height: 10, borderRadius: "50%",
+                      background: CLUSTER_STROKES[ci], display: "inline-block",
+                    }} />
+                    {tag} ({count})
+                  </span>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

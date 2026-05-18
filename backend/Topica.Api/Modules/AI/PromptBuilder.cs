@@ -28,6 +28,7 @@ public static class PromptBuilder
         IReadOnlyList<string>? existingTopicTitles = null)
     {
         var linkHint = BuildLinkHint(existingTopicTitles, language);
+        var declartHint = BuildDeclartHint(language);
 
         return language == "en"
             ? $"""
@@ -42,7 +43,7 @@ public static class PromptBuilder
                 Requirements:
                 - Concise, structured markdown format
                 - Include overview, key concepts (bullet points), and why it matters
-                - Respond with markdown only (no extra explanation){linkHint}
+                - Respond with markdown only (no extra explanation){linkHint}{declartHint}
                 """
             : $"""
                 당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 마크다운 요약을 작성하세요.
@@ -56,7 +57,7 @@ public static class PromptBuilder
                 요구사항:
                 - 간결하고 구조화된 마크다운 형식
                 - 개요, 핵심 개념(불릿 포인트), 중요한 이유 포함
-                - 마크다운만 응답 (다른 설명 불필요){linkHint}
+                - 마크다운만 응답 (다른 설명 불필요){linkHint}{declartHint}
                 """;
     }
 
@@ -68,6 +69,7 @@ public static class PromptBuilder
         IReadOnlyList<string>? existingTopicTitles = null)
     {
         var linkHint = BuildLinkHint(existingTopicTitles, language);
+        var declartHint = BuildDeclartHint(language);
 
         return language == "en"
             ? $"""
@@ -83,7 +85,7 @@ public static class PromptBuilder
                 - Detailed, educational markdown lecture format
                 - Include concept explanations, examples, and key term definitions
                 - Systematic structure with sections
-                - Respond with markdown only (no extra explanation){linkHint}
+                - Respond with markdown only (no extra explanation){linkHint}{declartHint}
                 """
             : $"""
                 당신은 교육 콘텐츠 작성자입니다. 아래 토픽에 대한 상세 강의를 작성하세요.
@@ -98,7 +100,7 @@ public static class PromptBuilder
                 - 상세하고 교육적인 마크다운 강의 자료 형식
                 - 개념 설명, 예시, 핵심 용어 정의 포함
                 - 섹션별 체계적 구조
-                - 마크다운만 응답 (다른 설명 불필요){linkHint}
+                - 마크다운만 응답 (다른 설명 불필요){linkHint}{declartHint}
                 """;
     }
 
@@ -261,6 +263,42 @@ public static class PromptBuilder
                 : $"\n기존 학습 토픽 목록: {string.Join(", ", titles)}\n본문에서 해당 목록의 토픽과 겹치는 개념이 등장하면 [[토픽명]] 형식으로 한 번만 링크하세요."
             : string.Empty;
 
+    private static string BuildDeclartHint(string language) => language == "en"
+        ? """
+
+            - If the topic has a clear hierarchical structure (3+ levels), include ONE declart block to visualize it:
+            ```declart
+            kind = 'hierarchy'
+            title = 'Topic Title'
+            [[nodes]]
+            label = 'Root'
+            [[nodes]]
+            label = 'Branch'
+            parent = 'Root'
+            [[nodes]]
+            label = 'Leaf'
+            parent = 'Branch'
+            ```
+            Use declart only once per response and only when hierarchy genuinely exists.
+            """
+        : """
+
+            - 토픽에 명확한 계층 구조(3단계 이상)가 있다면, 이를 시각화하는 declart 블록을 1개 포함하세요:
+            ```declart
+            kind = 'hierarchy'
+            title = '토픽 제목'
+            [[nodes]]
+            label = '루트'
+            [[nodes]]
+            label = '가지'
+            parent = '루트'
+            [[nodes]]
+            label = '잎'
+            parent = '가지'
+            ```
+            declart는 응답당 1번만, 실제 계층 구조가 있을 때만 사용하세요.
+            """;
+
     public static string TagSystem() =>
         """
         Extract 3-8 concise topic tags from the given content.
@@ -297,6 +335,9 @@ public static class PromptBuilder
             {WidgetExampleEn}
             Available widgets: metric, gauge, progress, chart.bar, table
             Use widgets sparingly — only when they genuinely aid understanding.
+            - When explaining a concept with 3+ levels of hierarchy (e.g. category → subcategory → detail), you MAY include a declart block:
+            {DeclartExampleEn}
+            Use declart ONLY for genuinely hierarchical structures — not for simple lists or flat comparisons.
             """
         : $"""
             당신은 토픽 학습 도우미입니다.
@@ -315,7 +356,46 @@ public static class PromptBuilder
             {WidgetExampleKo}
             사용 가능한 위젯: metric, gauge, progress, chart.bar, table
             위젯은 이해에 실질적으로 도움이 될 때만 사용하세요.
+            - 3단계 이상의 계층 구조를 설명할 때(예: 대분류 → 중분류 → 세부 항목) 다음과 같이 declart 블록을 포함할 수 있습니다:
+            {DeclartExampleKo}
+            declart는 진정한 계층 구조에만 사용하세요 — 단순 목록이나 평면적 비교에는 사용하지 마세요.
             """;
+
+    private const string DeclartExampleEn = """
+        ```declart
+        kind = 'hierarchy'
+        title = 'Concept Title'
+        [[nodes]]
+        label = 'Root Concept'
+        [[nodes]]
+        label = 'Category A'
+        parent = 'Root Concept'
+        [[nodes]]
+        label = 'Detail A1'
+        parent = 'Category A'
+        [[nodes]]
+        label = 'Category B'
+        parent = 'Root Concept'
+        ```
+        """;
+
+    private const string DeclartExampleKo = """
+        ```declart
+        kind = 'hierarchy'
+        title = '개념 제목'
+        [[nodes]]
+        label = '루트 개념'
+        [[nodes]]
+        label = '분류 A'
+        parent = '루트 개념'
+        [[nodes]]
+        label = '세부 A1'
+        parent = '분류 A'
+        [[nodes]]
+        label = '분류 B'
+        parent = '루트 개념'
+        ```
+        """;
 
     private const string WidgetExampleEn = """
         ```widget

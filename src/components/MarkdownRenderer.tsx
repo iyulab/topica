@@ -1,7 +1,9 @@
-import { useRef, useEffect, useMemo } from "react";
+import { useRef, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import DOMPurify from "dompurify";
+import { render as renderDeclart } from "@iyulab/declart-web";
 import "@iyulab/u-widgets";
 import type { UWidgetSpec } from "@iyulab/u-widgets";
 
@@ -22,6 +24,43 @@ export function preprocessWikiLinks(
     const id = topicIndex[title];
     return id ? `[${display}](topic:${id})` : `**${display}**`;
   });
+}
+
+function normalizeDeclart(raw: string): string {
+  const text = raw.trim();
+  const fenceMatch = text.match(/^```[^\n]*\n([\s\S]*?)```$/s);
+  if (fenceMatch) return fenceMatch[1].trim();
+  return text;
+}
+
+function DeclartBlock({ code }: { code: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!ref.current) return;
+    const normalized = normalizeDeclart(code);
+    try {
+      const rawSvg = renderDeclart(normalized, "default");
+      const cleanSvg = DOMPurify.sanitize(rawSvg, {
+        USE_PROFILES: { svg: true, svgFilters: true },
+      });
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(cleanSvg, "image/svg+xml");
+      ref.current.replaceChildren(doc.documentElement.cloneNode(true));
+    } catch {
+      setFailed(true);
+    }
+  }, [code]);
+
+  if (failed) {
+    return (
+      <pre style={{ background: "#f5f5f5", padding: 12, borderRadius: 6, fontSize: 12, overflowX: "auto" }}>
+        {code}
+      </pre>
+    );
+  }
+  return <div ref={ref} style={{ width: "100%", overflowX: "auto", margin: "12px 0" }} />;
 }
 
 function WidgetBlock({ code }: { code: string }) {
@@ -97,6 +136,9 @@ export default function MarkdownRenderer({ content, topicIndex = {} }: Props) {
             const { className, children } = props;
             const langMatch = className?.match(/language-(\w+)/);
             const lang = langMatch?.[1];
+            if (lang === "declart") {
+              return <DeclartBlock code={String(children)} />;
+            }
             if (lang === "widget") {
               return <WidgetBlock code={String(children)} />;
             }

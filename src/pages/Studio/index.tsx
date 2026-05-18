@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { generateContent, getContents, getLevelRecommendation, getRelatedTopics, getTags, getTopics, postLearningSession, type Content, type LevelRecommendation, type RelatedTopic, type Topic } from "../../lib/api";
 import { topicaWs, type WsMessage } from "../../lib/ws";
@@ -11,6 +11,7 @@ import QuizViewer from "../../components/QuizViewer";
 import ChatPanel from "../../components/ChatPanel";
 import SurveyModal from "../../components/SurveyModal";
 import { ContentSkeleton } from "../../components/SkeletonLoader";
+import TopicSuggestions from "../../components/TopicSuggestions";
 
 export default function Studio() {
   const { topicId } = useParams<{ topicId: string }>();
@@ -25,6 +26,7 @@ export default function Studio() {
   const [regenerating, setRegenerating] = useState<number | null>(null);
   const [tags, setTags] = useState<string[]>([]);
   const [relatedTopics, setRelatedTopics] = useState<RelatedTopic[]>([]);
+  const [allTopics, setAllTopics] = useState<{ id: string; title: string }[]>([]);
   const [recommendation, setRecommendation] = useState<LevelRecommendation | null>(null);
   const { activeItems, failedItems } = useQueueStore();
   const topicActiveItems = activeItems.filter((i) => i.topicId === topicId);
@@ -33,7 +35,10 @@ export default function Studio() {
   useEffect(() => {
     if (!topicId) return;
     Promise.all([
-      getTopics().then((ts) => ts.find((t) => t.id === topicId) ?? null),
+      getTopics().then((ts) => {
+        setAllTopics(ts.map((t) => ({ id: t.id, title: t.title })));
+        return ts.find((t) => t.id === topicId) ?? null;
+      }),
       getContents(topicId),
       getTags(topicId).catch(() => [] as string[]),
       getRelatedTopics(topicId).catch(() => [] as RelatedTopic[]),
@@ -82,6 +87,11 @@ export default function Studio() {
   const flashcard = contents.find((c) => c.type === 2);
   const quiz = contents.find((c) => c.type === 3);
   const mindmap = contents.find((c) => c.type === 4);
+
+  const topicIndex = useMemo(
+    () => Object.fromEntries(allTopics.map((t) => [t.title, t.id])),
+    [allTopics]
+  );
 
   const tabs = [
     { label: "요약", content: summary, isGenerating: topicActiveItems.some((i) => i.contentType === "Summary"), isFailed: topicFailedItems.find((f) => f.contentType === "Summary"), renderer: "markdown" },
@@ -257,7 +267,10 @@ export default function Studio() {
             <MindmapViewer body={tabs[activeTab].content!.body} />
           )}
           {tabs[activeTab].renderer === "markdown" && (
-            <MarkdownRenderer content={tabs[activeTab].content!.body} />
+            <MarkdownRenderer content={tabs[activeTab].content!.body} topicIndex={topicIndex} />
+          )}
+          {tabs[activeTab].renderer === "markdown" && (activeTab === 0 || activeTab === 1) && topicId && (
+            <TopicSuggestions topicId={topicId} />
           )}
         </div>
       ) : (

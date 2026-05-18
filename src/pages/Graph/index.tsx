@@ -116,8 +116,8 @@ export default function GraphPage() {
   const nodes = useMemo(() => computeForceLayout(visibleTopics), [visibleTopics]);
 
   const { assignments: clusterAssignments, clusterTags } = useMemo(
-    () => computeTagClusters(visibleTopics),
-    [visibleTopics]
+    () => computeTagClusters(topics),
+    [topics]
   );
 
   // Clear selection when selected topic is filtered out

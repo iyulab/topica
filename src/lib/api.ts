@@ -293,3 +293,21 @@ export async function postLearningSession(
 export async function getLearningStats(): Promise<LearningStats> {
   return apiGet<LearningStats>("/learning-sessions/stats");
 }
+
+export interface PathSuggestion {
+  id: string;
+  title: string;
+}
+
+export async function getPathSuggestions(): Promise<PathSuggestion[]> {
+  return apiGet<PathSuggestion[]>("/learning-sessions/path-suggestions");
+}
+
+export interface LearningGraphData {
+  nodes: { id: string; title: string; studied: boolean }[];
+  edges: { source: string; target: string }[];
+}
+
+export async function getLearningGraphData(): Promise<LearningGraphData> {
+  return apiGet<LearningGraphData>("/learning-sessions/graph-data");
+}

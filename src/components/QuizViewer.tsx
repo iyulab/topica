@@ -29,6 +29,14 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
   const score = [...selected.entries()].filter(([i, v]) => questions[i]?.answer === v).length;
 
   useEffect(() => {
+    setCurrent(0);
+    setSelected(new Map());
+    setSubmitted(false);
+    setEvalResult(null);
+    startTimeRef.current = Date.now();
+  }, [body]);
+
+  useEffect(() => {
     if (submitted) onComplete?.(score, questions.length, Math.round((Date.now() - startTimeRef.current) / 1000));
   }, [submitted]); // eslint-disable-line react-hooks/exhaustive-deps
 

@@ -83,7 +83,7 @@ export default function ChatPanel({ topicId }: Props) {
   if (loading) return <div style={{ padding: 20, color: "#aaa", fontSize: 13 }}>대화 내역 불러오는 중...</div>;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: 500 }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "clamp(400px, 60vh, 700px)" }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 8 }}>
         {messages.length > 0 && (

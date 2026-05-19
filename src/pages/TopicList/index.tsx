@@ -124,6 +124,7 @@ export default function TopicList() {
         <div style={{ marginTop: 8 }}>
           <button
             type="button"
+            aria-expanded={showAdvanced}
             onClick={() => setShowAdvanced((v) => !v)}
             style={{ background: "none", border: "none", color: "#6c63ff", fontSize: 12, cursor: "pointer", padding: 0 }}
           >

@@ -30,6 +30,13 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
     setIsFlipped((v) => !v);
   };
 
+  useEffect(() => {
+    setCurrent(0);
+    setIsFlipped(false);
+    setStudied(new Set());
+    startTimeRef.current = Date.now();
+  }, [body]);
+
   const allDone = cards.length > 0 && studied.size === cards.length;
   useEffect(() => {
     if (allDone) onComplete?.(cards.length, Math.round((Date.now() - startTimeRef.current) / 1000));

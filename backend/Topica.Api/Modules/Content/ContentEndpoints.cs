@@ -21,6 +21,8 @@ public static class ContentEndpoints
         services.AddScoped<ContentService>();
         services.AddScoped<IStreamingContentGenerator, SummaryGenerator>();
         services.AddScoped<IStreamingContentGenerator, LectureGenerator>();
+        services.AddScoped<IStreamingContentGenerator, FlashcardGenerator>();
+        services.AddScoped<IStreamingContentGenerator, QuizGenerator>();
         services.AddScoped<IContentGenerator, SummaryGenerator>();
         services.AddScoped<IContentGenerator, LectureGenerator>();
         services.AddScoped<IContentGenerator, FlashcardGenerator>();

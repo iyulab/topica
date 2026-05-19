@@ -10,7 +10,7 @@ import MindmapViewer from "../../components/MindmapViewer";
 import QuizViewer from "../../components/QuizViewer";
 import ChatPanel from "../../components/ChatPanel";
 import SurveyModal from "../../components/SurveyModal";
-import { ContentSkeleton } from "../../components/SkeletonLoader";
+import { CardSkeleton, ContentSkeleton, QuizSkeleton } from "../../components/SkeletonLoader";
 import TopicSuggestions from "../../components/TopicSuggestions";
 
 export default function Studio() {
@@ -26,6 +26,7 @@ export default function Studio() {
   const [regenerating, setRegenerating] = useState<number | null>(null);
   const [streamingText, setStreamingText] = useState<string | null>(null);
   const streamAbortRef = useRef<AbortController | null>(null);
+  const generationRef = useRef(0);
   const [showPrevious, setShowPrevious] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [relatedTopics, setRelatedTopics] = useState<RelatedTopic[]>([]);
@@ -83,32 +84,43 @@ export default function Studio() {
 
   const handleRegenerate = async (tabIndex: number) => {
     if (!topicId || !topic) return;
+    // Abort any in-progress stream before starting a new one
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    const myGen = ++generationRef.current;
     setRegenerating(tabIndex);
     setStreamingText(null);
     setShowPrevious(false);
-    if (tabIndex === 0 || tabIndex === 1) {
+    if (tabIndex === 0 || tabIndex === 1 || tabIndex === 2 || tabIndex === 3) {
       const abort = new AbortController();
       streamAbortRef.current = abort;
+      // For flashcard/quiz: show skeleton (set empty string, don't update on delta)
+      const isJsonType = tabIndex === 2 || tabIndex === 3;
+      if (isJsonType) setStreamingText("");
       try {
         for await (const chunk of streamContent(topicId, tabIndex, topic.userLevel, abort.signal)) {
           if (chunk.done && chunk.content) {
             setContents((cs) => [...cs.filter((c) => c.type !== tabIndex), chunk.content!]);
             setStreamingText(null);
-          } else if (chunk.delta) {
+          } else if (chunk.delta && !isJsonType) {
             setStreamingText((prev) => (prev ?? "") + chunk.delta);
           }
         }
       } finally {
-        setRegenerating(null);
-        setStreamingText(null);
-        streamAbortRef.current = null;
+        if (generationRef.current === myGen) {
+          setRegenerating(null);
+          setStreamingText(null);
+          streamAbortRef.current = null;
+        }
       }
     } else {
       try {
         const updated = await generateContent(topicId, tabIndex, topic.userLevel);
         setContents((cs) => [...cs.filter((c) => c.type !== tabIndex), updated]);
       } finally {
-        setRegenerating(null);
+        if (generationRef.current === myGen) {
+          setRegenerating(null);
+        }
       }
     }
   };
@@ -217,7 +229,7 @@ export default function Studio() {
         {tabs.map((tab, i) => (
           <button
             key={i}
-            onClick={() => { setActiveTab(i); setShowPrevious(false); }}
+            onClick={() => { setActiveTab(i); setShowPrevious(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             style={{
               padding: "8px 16px",
               border: "none",
@@ -270,7 +282,13 @@ export default function Studio() {
       ) : regenerating === activeTab && streamingText !== null ? (
         <div style={{ background: "#fff", borderRadius: 8, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
           <div style={{ color: "#6c63ff", fontSize: 12, marginBottom: 12 }}>✦ AI가 콘텐츠를 생성하고 있습니다...</div>
-          <MarkdownRenderer content={streamingText} topicIndex={topicIndex} />
+          {tabs[activeTab].renderer === "flashcard" ? (
+            <CardSkeleton />
+          ) : tabs[activeTab].renderer === "quiz" ? (
+            <QuizSkeleton />
+          ) : (
+            <MarkdownRenderer content={streamingText} topicIndex={topicIndex} />
+          )}
         </div>
       ) : tabs[activeTab].content ? (
         <div style={{
@@ -280,32 +298,46 @@ export default function Studio() {
           boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
         }}>
           {tabs[activeTab].renderer === "flashcard" && (
-            <FlashcardViewer
-              body={tabs[activeTab].content!.body}
-              onComplete={(count, duration) => {
-                if (topicId) postLearningSession(topicId, duration, null, count).catch(() => {});
-              }}
-            />
+            <>
+              {showPrevious && tabs[activeTab].content!.previousBody && (
+                <div style={{ marginBottom: 8, padding: "4px 10px", background: "#fff9e6", border: "1px solid #ffe58f", borderRadius: 6, fontSize: 12, color: "#7d5c00" }}>
+                  📜 이전 버전 — 재생성 전 플래시카드입니다.
+                </div>
+              )}
+              <FlashcardViewer
+                body={showPrevious && tabs[activeTab].content!.previousBody ? tabs[activeTab].content!.previousBody! : tabs[activeTab].content!.body}
+                onComplete={(count, duration) => {
+                  if (topicId) postLearningSession(topicId, duration, null, count).catch(() => {});
+                }}
+              />
+            </>
           )}
           {tabs[activeTab].renderer === "quiz" && (
-            <QuizViewer
-              body={tabs[activeTab].content!.body}
-              topicId={topicId}
-              contentId={tabs[activeTab].content!.id}
-              onLevelChange={(newLevel) => {
-                setTopic((t) => t ? { ...t, userLevel: newLevel } : t);
-                if (topicId) getLevelRecommendation(topicId).then(setRecommendation).catch(() => {});
-              }}
-              onComplete={(score, total, duration) => {
-                if (topicId) {
-                  const pct = Math.round((score / total) * 100);
-                  postLearningSession(topicId, duration, pct, 0).catch(() => {});
-                }
-              }}
-            />
+            <>
+              {showPrevious && tabs[activeTab].content!.previousBody && (
+                <div style={{ marginBottom: 8, padding: "4px 10px", background: "#fff9e6", border: "1px solid #ffe58f", borderRadius: 6, fontSize: 12, color: "#7d5c00" }}>
+                  📜 이전 버전 — 재생성 전 퀴즈입니다.
+                </div>
+              )}
+              <QuizViewer
+                body={showPrevious && tabs[activeTab].content!.previousBody ? tabs[activeTab].content!.previousBody! : tabs[activeTab].content!.body}
+                topicId={topicId}
+                contentId={tabs[activeTab].content!.id}
+                onLevelChange={(newLevel) => {
+                  setTopic((t) => t ? { ...t, userLevel: newLevel } : t);
+                  if (topicId) getLevelRecommendation(topicId).then(setRecommendation).catch(() => {});
+                }}
+                onComplete={(score, total, duration) => {
+                  if (topicId) {
+                    const pct = Math.round((score / total) * 100);
+                    postLearningSession(topicId, duration, pct, 0).catch(() => {});
+                  }
+                }}
+              />
+            </>
           )}
           {tabs[activeTab].renderer === "mindmap" && (
-            <MindmapViewer body={tabs[activeTab].content!.body} />
+            <MindmapViewer body={showPrevious && tabs[activeTab].content!.previousBody ? tabs[activeTab].content!.previousBody! : tabs[activeTab].content!.body} />
           )}
           {tabs[activeTab].renderer === "markdown" && (
             <>

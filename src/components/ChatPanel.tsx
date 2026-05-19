@@ -97,7 +97,7 @@ export default function ChatPanel({ topicId }: Props) {
       </div>
 
       {/* Messages */}
-      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingBottom: 12 }}>
+      <div role="log" aria-live="polite" aria-label="채팅 메시지" style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingBottom: 12 }}>
         {messages.length === 0 && (
           <div style={{ textAlign: "center", color: "#bbb", fontSize: 13, padding: "40px 0" }}>
             이 토픽에 대해 무엇이든 물어보세요.
@@ -106,6 +106,7 @@ export default function ChatPanel({ topicId }: Props) {
         {messages.map((msg) => (
           <div
             key={msg.id}
+            aria-label={msg.role === 0 ? "내 메시지" : "AI 응답"}
             style={{
               display: "flex",
               justifyContent: msg.role === 0 ? "flex-end" : "flex-start",
@@ -133,17 +134,22 @@ export default function ChatPanel({ topicId }: Props) {
         ))}
         {sending && !messages.some((m) => m.id.startsWith("tmp-streaming-")) && (
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
-            <div style={{
-              padding: "10px 14px",
-              borderRadius: "12px 12px 12px 4px",
-              background: "#f0f0f0",
-              display: "flex",
-              alignItems: "center",
-              gap: 4,
-            }}>
+            <div
+              role="status"
+              aria-label="AI 응답 생성 중"
+              style={{
+                padding: "10px 14px",
+                borderRadius: "12px 12px 12px 4px",
+                background: "#f0f0f0",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+              }}
+            >
               {[0, 1, 2].map((i) => (
                 <span
                   key={i}
+                  aria-hidden="true"
                   style={{
                     width: 7,
                     height: 7,
@@ -167,6 +173,7 @@ export default function ChatPanel({ topicId }: Props) {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
           placeholder="질문을 입력하세요... (Enter로 전송)"
+          aria-label="질문 입력"
           disabled={sending}
           style={{
             flex: 1,

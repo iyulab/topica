@@ -33,6 +33,7 @@ export default function Studio() {
   const [allTopics, setAllTopics] = useState<{ id: string; title: string }[]>([]);
   const [recommendation, setRecommendation] = useState<LevelRecommendation | null>(null);
   const { activeItems, failedItems } = useQueueStore();
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const topicActiveItems = activeItems.filter((i) => i.topicId === topicId);
   const topicFailedItems = failedItems.filter((f) => f.topicId === topicId);
 
@@ -225,10 +226,33 @@ export default function Studio() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "1px solid #ddd", alignItems: "flex-end" }}>
+      <div
+        role="tablist"
+        aria-label="콘텐츠 탭"
+        onKeyDown={(e) => {
+          const count = tabs.length;
+          let next = activeTab;
+          if (e.key === "ArrowRight") next = (activeTab + 1) % count;
+          else if (e.key === "ArrowLeft") next = (activeTab - 1 + count) % count;
+          else if (e.key === "Home") next = 0;
+          else if (e.key === "End") next = count - 1;
+          else return;
+          e.preventDefault();
+          setActiveTab(next);
+          setShowPrevious(false);
+          tabRefs.current[next]?.focus();
+        }}
+        style={{ display: "flex", gap: 4, marginBottom: 16, borderBottom: "1px solid #ddd", alignItems: "flex-end" }}
+      >
         {tabs.map((tab, i) => (
           <button
             key={i}
+            ref={(el) => { tabRefs.current[i] = el; }}
+            role="tab"
+            id={`tab-${i}`}
+            aria-selected={activeTab === i}
+            aria-controls="tabpanel"
+            tabIndex={activeTab === i ? 0 : -1}
             onClick={() => { setActiveTab(i); setShowPrevious(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
             style={{
               padding: "8px 16px",
@@ -242,7 +266,9 @@ export default function Studio() {
             }}
           >
             {tab.label}{" "}
-            {tab.renderer === "chat" ? "💬" : tab.isGenerating ? "⏳" : tab.isFailed ? "⚠️" : tab.content ? "✓" : "—"}
+            <span aria-hidden="true">
+              {tab.renderer === "chat" ? "💬" : tab.isGenerating ? "⏳" : tab.isFailed ? "⚠️" : tab.content ? "✓" : "—"}
+            </span>
           </button>
         ))}
         {tabs[activeTab].renderer !== "chat" && topicId && (
@@ -275,6 +301,7 @@ export default function Studio() {
       </div>
 
       {/* Content area */}
+      <div id="tabpanel" role="tabpanel" aria-labelledby={`tab-${activeTab}`}>
       {tabs[activeTab].renderer === "chat" ? (
         <div style={{ background: "#fff", borderRadius: 8, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
           {topicId && <ChatPanel topicId={topicId} />}
@@ -406,6 +433,7 @@ export default function Studio() {
           )}
         </div>
       )}
+      </div>
 
       {relatedTopics.length > 0 && (
         <div style={{ marginTop: 24 }}>

@@ -141,19 +141,26 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
               bg = "#e8e5ff"; border = "1px solid #6c63ff";
             }
 
+            const answerLabel = answered
+              ? i === q.answer ? " (정답)" : i === chosen ? " (오답)" : ""
+              : "";
             return (
-              <div
+              <button
                 key={i}
                 onClick={() => !answered && setSelected((m) => new Map(m).set(current, i))}
+                aria-disabled={answered}
+                aria-pressed={!answered ? chosen === i : undefined}
+                aria-label={`${String.fromCharCode(65 + i)}. ${opt}${answerLabel}`}
                 style={{
                   background: bg, border, borderRadius: 6, padding: "10px 14px",
                   cursor: answered ? "default" : "pointer", fontSize: 14, color,
                   display: "flex", alignItems: "center", gap: 10,
+                  width: "100%", textAlign: "left",
                 }}
               >
-                <span style={{ fontWeight: 600, minWidth: 20 }}>{String.fromCharCode(65 + i)}.</span>
+                <span aria-hidden="true" style={{ fontWeight: 600, minWidth: 20 }}>{String.fromCharCode(65 + i)}.</span>
                 {opt}
-              </div>
+              </button>
             );
           })}
         </div>

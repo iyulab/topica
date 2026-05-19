@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { saveSurveyAnswers, surveyStream } from "../lib/api";
 
+const TITLE_ID = "survey-modal-title";
+
 interface Props {
   topicId: string;
   onClose: () => void;
@@ -12,6 +14,7 @@ export default function SurveyModal({ topicId, onClose }: Props) {
   const [streaming, setStreaming] = useState(true);
   const [saving, setSaving] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const ctrl = new AbortController();
@@ -33,6 +36,18 @@ export default function SurveyModal({ topicId, onClose }: Props) {
     return () => ctrl.abort();
   }, [topicId]);
 
+  // 모달 열릴 때 포커스 이동, ESC로 닫기
+  useEffect(() => {
+    const prev = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", handler);
+    return () => {
+      document.removeEventListener("keydown", handler);
+      prev?.focus();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSubmit = async () => {
     setSaving(true);
     try {
@@ -48,13 +63,21 @@ export default function SurveyModal({ topicId, onClose }: Props) {
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
       display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
     }}>
-      <div style={{
-        background: "#fff", borderRadius: 12, padding: 28, width: 520, maxWidth: "90vw",
-        maxHeight: "80vh", overflow: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-      }}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={TITLE_ID}
+        tabIndex={-1}
+        style={{
+          background: "#fff", borderRadius: 12, padding: 28, width: 520, maxWidth: "90vw",
+          maxHeight: "80vh", overflow: "auto", boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
+          outline: "none",
+        }}
+      >
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-          <h3 style={{ margin: 0, color: "#222" }}>학습 목표 파악</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#888" }}>✕</button>
+          <h3 id={TITLE_ID} style={{ margin: 0, color: "#222" }}>학습 목표 파악</h3>
+          <button onClick={onClose} aria-label="모달 닫기" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#888" }}>✕</button>
         </div>
 
         {streaming && questions.length === 0 && (
@@ -63,8 +86,9 @@ export default function SurveyModal({ topicId, onClose }: Props) {
 
         {questions.map((q, i) => (
           <div key={i} style={{ marginBottom: 16 }}>
-            <p style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 500, color: "#333" }}>{q}</p>
+            <p id={`survey-q-${i}`} style={{ margin: "0 0 6px", fontSize: 14, fontWeight: 500, color: "#333" }}>{q}</p>
             <input
+              aria-labelledby={`survey-q-${i}`}
               value={answers[i] ?? ""}
               onChange={(e) => {
                 const updated = [...answers];

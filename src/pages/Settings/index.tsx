@@ -288,10 +288,11 @@ export default function Settings() {
 
         <form onSubmit={handleSave}>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+            <label htmlFor="openai-api-key" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
               OpenAI API 키
             </label>
             <input
+              id="openai-api-key"
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
@@ -309,10 +310,11 @@ export default function Settings() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+            <label htmlFor="openai-model" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
               모델
             </label>
             <select
+              id="openai-model"
               value={model}
               onChange={(e) => setModel(e.target.value)}
               style={{
@@ -331,10 +333,11 @@ export default function Settings() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+            <label htmlFor="embedding-model" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
               임베딩 모델
             </label>
             <select
+              id="embedding-model"
               value={embeddingModel}
               onChange={(e) => setEmbeddingModel(e.target.value)}
               style={{
@@ -356,13 +359,14 @@ export default function Settings() {
           </div>
 
           <div style={{ marginBottom: 20 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+            <label htmlFor="prompt-language" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
               프롬프트 언어
               <span style={{ fontWeight: 400, color: "#888", marginLeft: 8, fontSize: 12 }}>
                 (OS 기본값: {detectOsLanguage() === "ko" ? "한국어" : "English"})
               </span>
             </label>
             <select
+              id="prompt-language"
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               style={{
@@ -390,10 +394,11 @@ export default function Settings() {
           </p>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+            <label htmlFor="ollama-endpoint" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
               서버 엔드포인트
             </label>
             <input
+              id="ollama-endpoint"
               type="text"
               value={ollamaEndpoint}
               onChange={(e) => setOllamaEndpoint(e.target.value)}
@@ -411,10 +416,11 @@ export default function Settings() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+            <label htmlFor="ollama-api-key" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
               API 키 (선택)
             </label>
             <input
+              id="ollama-api-key"
               type="password"
               value={ollamaApiKey}
               onChange={(e) => setOllamaApiKey(e.target.value)}
@@ -432,10 +438,11 @@ export default function Settings() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+            <label htmlFor="ollama-chat-model" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
               채팅 모델
             </label>
             <input
+              id="ollama-chat-model"
               type="text"
               value={ollamaModel}
               onChange={(e) => setOllamaModel(e.target.value)}
@@ -453,10 +460,11 @@ export default function Settings() {
           </div>
 
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
+            <label htmlFor="ollama-embedding-model" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
               임베딩 모델
             </label>
             <input
+              id="ollama-embedding-model"
               type="text"
               value={ollamaEmbeddingModel}
               onChange={(e) => { setOllamaEmbeddingModel(e.target.value); setDetectError(null); }}
@@ -555,12 +563,12 @@ export default function Settings() {
           </button>
 
           {saved && (
-            <span style={{ marginLeft: 12, fontSize: 13, color: "#28a745" }}>
+            <span role="status" style={{ marginLeft: 12, fontSize: 13, color: "#28a745" }}>
               ✓ 저장되었습니다 (즉시 적용됨)
             </span>
           )}
           {saveError && (
-            <span style={{ marginLeft: 12, fontSize: 13, color: "#e53935" }}>
+            <span role="alert" style={{ marginLeft: 12, fontSize: 13, color: "#e53935" }}>
               ⚠ {saveError}
             </span>
           )}

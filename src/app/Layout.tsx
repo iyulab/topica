@@ -13,7 +13,7 @@ export default function Layout() {
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "system-ui, sans-serif" }}>
       {/* Sidebar */}
-      <nav style={{
+      <nav aria-label="주 메뉴" style={{
         width: 200,
         background: "#1a1a2e",
         color: "#e0e0e0",
@@ -109,6 +109,7 @@ function NavLink({ to, label, active, icon: Icon }: { to: string; label: string;
   return (
     <Link
       to={to}
+      aria-current={active ? "page" : undefined}
       style={{
         display: "flex",
         alignItems: "center",
@@ -121,7 +122,7 @@ function NavLink({ to, label, active, icon: Icon }: { to: string; label: string;
         fontSize: 14,
       }}
     >
-      <Icon size={16} />
+      <Icon size={16} aria-hidden="true" />
       {label}
     </Link>
   );

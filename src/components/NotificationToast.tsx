@@ -59,15 +59,20 @@ export default function NotificationToast() {
   if (toasts.length === 0) return null;
 
   return (
-    <div style={{
-      position: "fixed",
-      bottom: 24,
-      right: 24,
-      display: "flex",
-      flexDirection: "column",
-      gap: 8,
-      zIndex: 1000,
-    }}>
+    <div
+      role="status"
+      aria-live="polite"
+      aria-atomic="false"
+      style={{
+        position: "fixed",
+        bottom: 24,
+        right: 24,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8,
+        zIndex: 1000,
+      }}
+    >
       {toasts.map((toast) => (
         <div
           key={toast.id}
@@ -83,7 +88,7 @@ export default function NotificationToast() {
             gap: 8,
           }}
         >
-          <span>✓</span>
+          <span aria-hidden="true">✓</span>
           {toast.message}
         </div>
       ))}

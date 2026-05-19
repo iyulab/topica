@@ -95,6 +95,7 @@ export default function TopicList() {
             onChange={(e) => setAddTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             placeholder="학습할 주제를 입력하세요  예: Python 기초, 머신러닝 원리..."
+            aria-label="학습할 주제"
             style={{
               flex: 1,
               padding: "10px 14px",
@@ -132,8 +133,9 @@ export default function TopicList() {
           </button>
           {showAdvanced && (
             <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-              <label style={{ fontSize: 12, color: "#666" }}>학습 레벨 (1–10)</label>
+              <label htmlFor="level-input" style={{ fontSize: 12, color: "#666" }}>학습 레벨 (1–10)</label>
               <input
+                id="level-input"
                 type="number"
                 min={1}
                 max={10}
@@ -169,6 +171,7 @@ export default function TopicList() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="토픽 검색..."
+              aria-label="토픽 검색"
               style={{
                 width: "100%",
                 padding: "8px 36px 8px 12px",
@@ -207,6 +210,7 @@ export default function TopicList() {
                 <button
                   key={tag}
                   onClick={() => setActiveTag(activeTag === tag ? null : tag)}
+                  aria-pressed={activeTag === tag}
                   style={{
                     padding: "2px 10px",
                     border: `1px solid ${activeTag === tag ? "#6c63ff" : "#ddd"}`,
@@ -321,66 +325,78 @@ function TopicCard({
   onDelete: () => void;
 }) {
   return (
-    <div
-      style={{
-        background: "#fff",
-        borderRadius: 8,
-        padding: "12px 16px",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        cursor: "pointer",
-      }}
-      onClick={onOpen}
-    >
-      <div style={{ flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontWeight: 600, color: "#222", fontSize: 15 }}>{topic.title}</span>
-          {needsReview && (
-            <span style={{
-              padding: "1px 7px",
-              background: "#fff0f0",
-              border: "1px solid #ffb3b3",
-              borderRadius: 10,
-              fontSize: 11,
-              color: "#c0392b",
-              whiteSpace: "nowrap",
-            }}>
-              복습 필요
-            </span>
+    <div style={{
+      background: "#fff",
+      borderRadius: 8,
+      boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
+      display: "flex",
+      alignItems: "center",
+    }}>
+      <button
+        onClick={onOpen}
+        aria-label={`${topic.title}${needsReview ? " (복습 필요)" : ""}${activeCount > 0 ? ` — 생성 중 ${activeCount}건` : ""} — 학습하기`}
+        style={{
+          flex: 1,
+          background: "none",
+          border: "none",
+          textAlign: "left",
+          cursor: "pointer",
+          padding: "12px 16px",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          minWidth: 0,
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontWeight: 600, color: "#222", fontSize: 15 }}>{topic.title}</span>
+            {needsReview && (
+              <span aria-hidden="true" style={{
+                padding: "1px 7px",
+                background: "#fff0f0",
+                border: "1px solid #ffb3b3",
+                borderRadius: 10,
+                fontSize: 11,
+                color: "#c0392b",
+                whiteSpace: "nowrap",
+              }}>
+                복습 필요
+              </span>
+            )}
+          </div>
+          {topic.description && (
+            <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{topic.description}</div>
           )}
         </div>
-        {topic.description && (
-          <div style={{ fontSize: 12, color: "#888", marginTop: 2 }}>{topic.description}</div>
+        {activeCount > 0 && (
+          <span aria-hidden="true" style={{
+            fontSize: 11,
+            color: "#f57c00",
+            background: "#fff3e0",
+            border: "1px solid #ffcc80",
+            borderRadius: 10,
+            padding: "2px 8px",
+            flexShrink: 0,
+          }}>
+            ⏳ 생성 중 {activeCount}
+          </span>
         )}
-      </div>
-      {activeCount > 0 && (
-        <span style={{
-          fontSize: 11,
-          color: "#f57c00",
-          background: "#fff3e0",
-          border: "1px solid #ffcc80",
-          borderRadius: 10,
-          padding: "2px 8px",
-        }}>
-          ⏳ 생성 중 {activeCount}
-        </span>
-      )}
-      <LevelBadge level={topic.userLevel} />
+        <LevelBadge level={topic.userLevel} />
+      </button>
       <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
+        onClick={onDelete}
+        aria-label={`${topic.title} 삭제`}
         style={{
           padding: "4px 10px",
+          margin: "0 12px 0 0",
           background: "transparent",
           border: "1px solid #ddd",
           borderRadius: 4,
           cursor: "pointer",
           color: "#e53935",
           fontSize: 12,
+          flexShrink: 0,
         }}
       >
         삭제

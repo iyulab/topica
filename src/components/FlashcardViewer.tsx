@@ -46,13 +46,13 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
     if (cards.length === 0) return;
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); }
-      else if (e.key === "ArrowLeft") prev();
+      // Space/Enter은 flip card div의 onKeyDown이 처리 — 글로벌에서 제외하여 이중 호출 방지
+      if (e.key === "ArrowLeft") prev();
       else if (e.key === "ArrowRight") next();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [current, isFlipped, cards.length]);
+  }, [current, cards.length]);
 
   if (cards.length === 0 && body.trim()) {
     return <p style={{ color: "#aaa" }}>플래시카드 데이터를 파싱할 수 없습니다.</p>;
@@ -95,7 +95,11 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
 
       {/* Flip card */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={isFlipped ? `뒷면: ${card.back}. 클릭하여 앞면 보기` : `앞면: ${card.front}. 클릭하여 답 확인`}
         onClick={flip}
+        onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); } }}
         style={{ perspective: 1000, cursor: "pointer", minHeight: 200, userSelect: "none" }}
       >
         <div
@@ -138,12 +142,13 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
       </div>
 
       {/* Dot navigator */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 16, justifyContent: "center" }}>
+      <div role="group" aria-label="카드 목록" style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 16, justifyContent: "center" }}>
         {cards.map((_, i) => (
-          <div
+          <button
             key={i}
             onClick={() => goTo(i)}
-            title={studied.has(i) ? "학습 완료" : "미학습"}
+            aria-label={`${i + 1}번째 카드${studied.has(i) ? " (학습 완료)" : ""}`}
+            aria-current={i === current ? "true" : undefined}
             style={{
               width: 10,
               height: 10,
@@ -151,6 +156,9 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
               background: i === current ? "#6c63ff" : studied.has(i) ? "#43a047" : "#ddd",
               cursor: "pointer",
               transition: "background 0.2s",
+              border: "none",
+              padding: 0,
+              flexShrink: 0,
             }}
           />
         ))}

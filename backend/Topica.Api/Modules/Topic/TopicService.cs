@@ -17,6 +17,52 @@ public class TopicService(ApplicationDbContext db)
                 t.Tags.Select(tg => tg.Tag).ToArray()))
             .ToListAsync(ct);
 
+    public async Task<List<TopicSummary>> SearchAsync(
+        string? q,
+        string[]? tags,
+        string? sort,
+        CancellationToken ct = default)
+    {
+        IQueryable<Topic> query;
+
+        if (!string.IsNullOrWhiteSpace(q))
+        {
+            var pattern = $"%{q}%";
+            // Include Contents so in-memory provider can evaluate t.Contents.Any(...)
+            query = db.Topics
+                .Include(t => t.Tags)
+                .Include(t => t.Contents)
+                .Where(t =>
+                    EF.Functions.Like(t.Title, pattern) ||
+                    EF.Functions.Like(t.Description, pattern) ||
+                    t.Contents.Any(c => EF.Functions.Like(c.Body, pattern)));
+        }
+        else
+        {
+            query = db.Topics.Include(t => t.Tags);
+        }
+
+        if (tags is { Length: > 0 })
+        {
+            foreach (var tag in tags)
+                query = query.Where(t => t.Tags.Any(tg => tg.Tag == tag));
+        }
+
+        query = sort switch
+        {
+            "updated_asc"  => query.OrderBy(t => t.UpdatedAt),
+            "title_asc"    => query.OrderBy(t => t.Title),
+            "created_desc" => query.OrderByDescending(t => t.CreatedAt),
+            _              => query.OrderByDescending(t => t.UpdatedAt),
+        };
+
+        return await query
+            .Select(t => new TopicSummary(
+                t.Id, t.Title, t.Description, t.UserLevel, t.CreatedAt, t.UpdatedAt,
+                t.Tags.Select(tg => tg.Tag).ToArray()))
+            .ToListAsync(ct);
+    }
+
     public async Task<Core.Entities.Topic?> GetByIdAsync(Guid id, CancellationToken ct = default)
         => await db.Topics.FindAsync([id], ct);
 

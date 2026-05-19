@@ -70,8 +70,19 @@ export interface Topic {
   tags?: string[];
 }
 
-export async function getTopics(): Promise<Topic[]> {
-  return apiGet<Topic[]>("/topics");
+export interface TopicSearchParams {
+  q?: string;
+  tags?: string[];
+  sort?: "updated_desc" | "updated_asc" | "title_asc" | "created_desc";
+}
+
+export async function getTopics(params?: TopicSearchParams): Promise<Topic[]> {
+  const sp = new URLSearchParams();
+  if (params?.q) sp.set("q", params.q);
+  if (params?.tags?.length) sp.set("tags", params.tags.join(","));
+  if (params?.sort) sp.set("sort", params.sort);
+  const qs = sp.toString();
+  return apiGet<Topic[]>(qs ? `/topics?${qs}` : "/topics");
 }
 
 export async function createTopic(title: string, userLevel: number): Promise<Topic> {

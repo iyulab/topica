@@ -16,9 +16,17 @@ public static class TopicEndpoints
     {
         var group = app.MapGroup("/topics");
 
-        group.MapGet("/", async (TopicService svc, CancellationToken ct) =>
+        group.MapGet("/", async (
+            [FromQuery] string? q,
+            [FromQuery] string? tags,
+            [FromQuery] string? sort,
+            TopicService svc,
+            CancellationToken ct) =>
         {
-            var topics = await svc.GetAllAsync(ct);
+            var tagList = string.IsNullOrWhiteSpace(tags)
+                ? null
+                : tags.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            var topics = await svc.SearchAsync(q, tagList, sort, ct);
             return Results.Ok(topics);
         });
 

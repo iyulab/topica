@@ -1,9 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createTopic, deleteTopic, getTopics, getReviewSuggestions, type Topic } from "../../lib/api";
+import { createTopic, deleteTopic, getTopics, getReviewSuggestions, type Topic, type TopicSearchParams } from "../../lib/api";
 import { useTopicStore, useQueueStore } from "../../lib/store";
 import LevelBadge from "../../components/LevelBadge";
 import { TopicListSkeleton } from "../../components/SkeletonLoader";
+
+type SortOption = "updated_desc" | "updated_asc" | "title_asc" | "created_desc";
 
 export default function TopicList() {
   const { topics, setTopics, addTopic, removeTopic } = useTopicStore();
@@ -17,20 +19,42 @@ export default function TopicList() {
   const [loadKey, setLoadKey] = useState(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [activeTags, setActiveTags] = useState<string[]>([]);
+  const [sort, setSort] = useState<SortOption>("updated_desc");
   const [reviewIds, setReviewIds] = useState<Set<string>>(new Set());
+  const [tagPool, setTagPool] = useState<string[]>([]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedQuery(searchQuery.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     setLoadError(null);
     setLoading(true);
-    getTopics()
-      .then(setTopics)
+    const params: TopicSearchParams = {};
+    if (debouncedQuery) params.q = debouncedQuery;
+    if (activeTags.length) params.tags = activeTags;
+    if (sort !== "updated_desc") params.sort = sort;
+    getTopics(params)
+      .then((result) => {
+        setTopics(result);
+        // 필터 없는 전체 로드일 때만 태그 풀 갱신
+        if (!debouncedQuery && !activeTags.length) {
+          const tags = Array.from(new Set(result.flatMap((t) => t.tags ?? []))).sort();
+          setTagPool(tags);
+        }
+      })
       .catch(() => setLoadError("토픽 목록을 불러오지 못했습니다."))
       .finally(() => setLoading(false));
+  }, [setTopics, loadKey, debouncedQuery, activeTags, sort]);
+
+  useEffect(() => {
     getReviewSuggestions()
       .then((list) => setReviewIds(new Set(list.map((r) => r.id))))
       .catch(() => {});
-  }, [setTopics, loadKey]);
+  }, []);
 
   const handleAdd = async () => {
     if (!addTitle.trim()) return;
@@ -40,6 +64,7 @@ export default function TopicList() {
       const topic = await createTopic(addTitle.trim(), addLevel);
       addTopic(topic);
       setAddTitle("");
+      setLoadKey((k) => k + 1);
     } catch {
       setError("토픽 추가에 실패했습니다.");
     } finally {
@@ -49,22 +74,16 @@ export default function TopicList() {
 
   const isLevelInvalid = showAdvanced && (addLevel < 1 || addLevel > 10);
 
-  const allTags = useMemo(() => {
-    const set = new Set<string>();
-    topics.forEach((t) => t.tags?.forEach((tag) => set.add(tag)));
-    return Array.from(set).sort();
-  }, [topics]);
+  // tagPool is populated on unfiltered loads so tag buttons stay visible during search
+  const allTags = tagPool;
 
-  const filteredTopics = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    return topics.filter((t) => {
-      const matchesSearch = !q ||
-        t.title.toLowerCase().includes(q) ||
-        (t.description && t.description.toLowerCase().includes(q));
-      const matchesTag = !activeTag || t.tags?.includes(activeTag);
-      return matchesSearch && matchesTag;
-    });
-  }, [topics, searchQuery, activeTag]);
+  const toggleTag = (tag: string) => {
+    setActiveTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    );
+  };
+
+  const hasFilter = debouncedQuery || activeTags.length > 0 || sort !== "updated_desc";
 
   const handleDelete = async (id: string, title: string) => {
     if (!window.confirm(`"${title}" 토픽을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return;
@@ -163,14 +182,14 @@ export default function TopicList() {
         {error && <p style={{ color: "#e53935", fontSize: 12, margin: "8px 0 0" }}>{error}</p>}
       </div>
 
-      {/* Search + Tag filter */}
-      {topics.length >= 3 && (
-        <div style={{ marginBottom: 12 }}>
-          <div style={{ position: "relative", marginBottom: allTags.length > 0 ? 8 : 0 }}>
+      {/* Search + Tag filter + Sort */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", gap: 8, marginBottom: allTags.length > 0 ? 8 : 0 }}>
+          <div style={{ position: "relative", flex: 1 }}>
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="토픽 검색..."
+              placeholder="제목·설명·내용 검색..."
               aria-label="토픽 검색"
               style={{
                 width: "100%",
@@ -204,30 +223,49 @@ export default function TopicList() {
               </button>
             )}
           </div>
-          {allTags.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {allTags.map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => setActiveTag(activeTag === tag ? null : tag)}
-                  aria-pressed={activeTag === tag}
-                  style={{
-                    padding: "2px 10px",
-                    border: `1px solid ${activeTag === tag ? "#6c63ff" : "#ddd"}`,
-                    borderRadius: 12,
-                    background: activeTag === tag ? "#6c63ff" : "#fff",
-                    color: activeTag === tag ? "#fff" : "#666",
-                    fontSize: 12,
-                    cursor: "pointer",
-                  }}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          )}
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortOption)}
+            aria-label="정렬 기준"
+            style={{
+              padding: "8px 10px",
+              border: "1px solid #ddd",
+              borderRadius: 6,
+              fontSize: 13,
+              background: "#fafafa",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            <option value="updated_desc">최근 수정순</option>
+            <option value="updated_asc">오래된 수정순</option>
+            <option value="title_asc">제목순</option>
+            <option value="created_desc">최근 추가순</option>
+          </select>
         </div>
-      )}
+        {allTags.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {allTags.map((tag) => (
+              <button
+                key={tag}
+                onClick={() => toggleTag(tag)}
+                aria-pressed={activeTags.includes(tag)}
+                style={{
+                  padding: "2px 10px",
+                  border: `1px solid ${activeTags.includes(tag) ? "#6c63ff" : "#ddd"}`,
+                  borderRadius: 12,
+                  background: activeTags.includes(tag) ? "#6c63ff" : "#fff",
+                  color: activeTags.includes(tag) ? "#fff" : "#666",
+                  fontSize: 12,
+                  cursor: "pointer",
+                }}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* List */}
       {loading ? (
@@ -250,23 +288,25 @@ export default function TopicList() {
             재시도
           </button>
         </div>
-      ) : topics.length === 0 ? (
+      ) : !hasFilter && topics.length === 0 ? (
         <p style={{ color: "#999", textAlign: "center", padding: "40px 0" }}>
           아직 토픽이 없습니다. 위에서 추가해보세요!
         </p>
-      ) : filteredTopics.length === 0 ? (
+      ) : hasFilter && topics.length === 0 ? (
         <p style={{ color: "#999", textAlign: "center", padding: "40px 0" }}>
-          {activeTag ? `"${activeTag}" 태그가 있는 토픽이 없습니다.` : `"${searchQuery}"와 일치하는 토픽이 없습니다.`}
+          {activeTags.length > 0
+            ? `"${activeTags.join(", ")}" 태그와 일치하는 토픽이 없습니다.`
+            : `"${debouncedQuery}"와 일치하는 토픽이 없습니다.`}
         </p>
       ) : (
         <>
-          {(searchQuery || activeTag) && (
+          {hasFilter && (
             <p style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
-              {topics.length}개 중 {filteredTopics.length}개 표시
+              {topics.length}개 표시
             </p>
           )}
           <TopicListWithQueue
-            topics={filteredTopics}
+            topics={topics}
             reviewIds={reviewIds}
             onOpen={(id) => navigate(`/topics/${id}/studio`)}
             onDelete={(id) => {

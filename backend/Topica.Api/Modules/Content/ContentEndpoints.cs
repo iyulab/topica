@@ -84,6 +84,7 @@ public static class ContentEndpoints
                 await ctx.Response.WriteAsync($"data: {data}\n\n", Encoding.UTF8, ct);
                 await ctx.Response.Body.FlushAsync(ct);
             }
+            await ctx.Response.CompleteAsync();
         });
 
         return app;

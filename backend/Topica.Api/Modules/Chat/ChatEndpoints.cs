@@ -51,6 +51,7 @@ public static class ChatEndpoints
                 await ctx.Response.WriteAsync($"data: {data}\n\n", Encoding.UTF8, ct);
                 await ctx.Response.Body.FlushAsync(ct);
             }
+            await ctx.Response.CompleteAsync();
         });
 
         group.MapDelete("/", async (Guid topicId, ChatService svc, CancellationToken ct) =>

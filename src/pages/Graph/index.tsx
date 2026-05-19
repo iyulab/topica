@@ -180,9 +180,9 @@ export default function GraphPage() {
         {allTags.length > 0 && (
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
             <span style={{ fontSize: 12, color: "#888", marginRight: 2 }}>태그:</span>
-            <button onClick={() => setTagFilter(null)} style={tagBtnStyle(!tagFilter)}>전체</button>
+            <button onClick={() => setTagFilter(null)} aria-pressed={!tagFilter} style={tagBtnStyle(!tagFilter)}>전체</button>
             {allTags.map((tag) => (
-              <button key={tag} onClick={() => setTagFilter(tag === tagFilter ? null : tag)} style={tagBtnStyle(tagFilter === tag)}>
+              <button key={tag} onClick={() => setTagFilter(tag === tagFilter ? null : tag)} aria-pressed={tagFilter === tag} style={tagBtnStyle(tagFilter === tag)}>
                 {tag}
               </button>
             ))}

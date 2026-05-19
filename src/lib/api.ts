@@ -16,7 +16,7 @@ async function getBaseUrl(): Promise<string> {
 
 export async function apiGet<T>(path: string): Promise<T> {
   const url = await getBaseUrl();
-  const res = await fetch(`${url}${path}`);
+  const res = await fetch(`${url}${path}`, { cache: "no-cache" });
   if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
   return res.json() as Promise<T>;
 }

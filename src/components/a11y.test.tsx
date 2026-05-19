@@ -1,4 +1,5 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, it, expect, vi } from "vitest";
 import QuizViewer from "./QuizViewer";
 import SurveyModal from "./SurveyModal";
@@ -78,5 +79,75 @@ describe("SurveyModal A11y", () => {
     render(<SurveyModal topicId="test-topic" onClose={() => {}} />);
     const closeBtn = screen.getByRole("button", { name: "모달 닫기" });
     expect(closeBtn).toBeTruthy();
+  });
+});
+
+// --- SurveyModal Focus Trap 키보드 통합 테스트 ---
+
+describe("SurveyModal Focus Trap", () => {
+  it("Tab: 마지막 포커서블 요소에서 첫 번째로 순환", async () => {
+    const user = userEvent.setup();
+    render(<SurveyModal topicId="test-topic" onClose={vi.fn()} />);
+
+    // surveyStream이 즉시 완료되어 스트리밍 종료 대기
+    const submitBtn = await screen.findByRole("button", { name: "완료 — 학습 시작" });
+    const closeBtn = screen.getByRole("button", { name: "모달 닫기" });
+    const cancelBtn = screen.getByRole("button", { name: "건너뛰기" });
+
+    // 마지막 요소(취소 버튼)에 포커스
+    cancelBtn.focus();
+    expect(document.activeElement).toBe(cancelBtn);
+
+    // Tab → 첫 번째 포커서블 요소(닫기 버튼)로 순환해야 함
+    await user.keyboard("{Tab}");
+    expect(document.activeElement).toBe(closeBtn);
+    void submitBtn; // 사용 확인
+  });
+
+  it("Shift+Tab: 첫 번째 포커서블 요소에서 마지막으로 순환", async () => {
+    const user = userEvent.setup();
+    render(<SurveyModal topicId="test-topic" onClose={vi.fn()} />);
+
+    await screen.findByRole("button", { name: "완료 — 학습 시작" });
+    const closeBtn = screen.getByRole("button", { name: "모달 닫기" });
+    const cancelBtn = screen.getByRole("button", { name: "건너뛰기" });
+
+    // 첫 번째 요소(닫기 버튼)에 포커스
+    closeBtn.focus();
+    expect(document.activeElement).toBe(closeBtn);
+
+    // Shift+Tab → 마지막 포커서블 요소(취소 버튼)로 순환
+    await user.keyboard("{Shift>}{Tab}{/Shift}");
+    expect(document.activeElement).toBe(cancelBtn);
+  });
+
+  it("Escape 키로 모달 닫힘", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<SurveyModal topicId="test-topic" onClose={onClose} />);
+
+    await screen.findByRole("button", { name: "완료 — 학습 시작" });
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
+  });
+
+  it("다이얼로그 외부 포커스 이탈 방지 — Tab 사이클 완전 순환", async () => {
+    const user = userEvent.setup();
+    render(<SurveyModal topicId="test-topic" onClose={vi.fn()} />);
+
+    await screen.findByRole("button", { name: "완료 — 학습 시작" });
+    const closeBtn = screen.getByRole("button", { name: "모달 닫기" });
+    const submitBtn = screen.getByRole("button", { name: "완료 — 학습 시작" });
+    const cancelBtn = screen.getByRole("button", { name: "건너뛰기" });
+
+    // 첫 요소부터 Tab 3회 → 첫 요소로 돌아와야 함
+    closeBtn.focus();
+    await user.keyboard("{Tab}"); // close → submit
+    expect(document.activeElement).toBe(submitBtn);
+    await user.keyboard("{Tab}"); // submit → cancel
+    expect(document.activeElement).toBe(cancelBtn);
+    await user.keyboard("{Tab}"); // cancel → close (wrap)
+    expect(document.activeElement).toBe(closeBtn);
   });
 });

@@ -31,6 +31,7 @@ public static class SurveyModule
 
             await ctx.Response.WriteAsync("data: {\"done\":true}\n\n", Encoding.UTF8, ct);
             await ctx.Response.Body.FlushAsync(ct);
+            await ctx.Response.CompleteAsync();
         });
 
         group.MapPost("/answers", async (Guid topicId, SurveyAnswers req, SurveyService svc, CancellationToken ct) =>

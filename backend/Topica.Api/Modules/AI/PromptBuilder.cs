@@ -208,6 +208,7 @@ public static class PromptBuilder
             - 4-7 main branches (parent = root label)
             - 2-4 sub-concepts per branch (parent = branch label)
             - Labels must be concise (1-5 words)
+            - CRITICAL: Each 'parent' value must be the EXACT full string of another node's 'label'. Never abbreviate — partial matches break rendering.
             - Respond ONLY with the TOML below, no extra text, no code fences:
 
             kind = 'hierarchy'
@@ -239,6 +240,7 @@ public static class PromptBuilder
             - 주요 가지 4~7개 (parent = 루트 레이블)
             - 가지당 하위 개념 2~4개 (parent = 가지 레이블)
             - 레이블은 간결하게 (1~5 단어)
+            - 반드시 지킬 것: 각 'parent' 값은 다른 노드의 'label' 전체 문자열과 정확히 일치해야 합니다. 절대 축약 불가 — 부분 일치는 렌더링 오류를 유발합니다.
             - 반드시 아래 TOML 형식만 응답, 다른 텍스트 없음, 코드 펜스 없음:
 
             kind = 'hierarchy'
@@ -280,6 +282,7 @@ public static class PromptBuilder
             parent = 'Branch'
             ```
             Use declart only once per response and only when hierarchy genuinely exists.
+            CRITICAL: Each 'parent' value must be the EXACT full string of another node's 'label'. Never abbreviate — partial matches will break rendering.
             """
         : """
 
@@ -297,6 +300,7 @@ public static class PromptBuilder
             parent = '가지'
             ```
             declart는 응답당 1번만, 실제 계층 구조가 있을 때만 사용하세요.
+            반드시 지킬 것: 각 'parent' 값은 다른 노드의 'label' 전체 문자열과 정확히 일치해야 합니다. 절대 축약하지 마세요 — 부분 일치는 렌더링 오류를 유발합니다.
             """;
 
     public static string TagSystem() =>
@@ -377,6 +381,7 @@ public static class PromptBuilder
         label = 'Category B'
         parent = 'Root Concept'
         ```
+        CRITICAL: Each 'parent' value must be the EXACT full string of another node's 'label'. Never abbreviate or shorten — partial matches will break rendering.
         """;
 
     private const string DeclartExampleKo = """
@@ -395,6 +400,7 @@ public static class PromptBuilder
         label = '분류 B'
         parent = '루트 개념'
         ```
+        반드시 지킬 것: 각 'parent' 값은 다른 노드의 'label' 전체 문자열과 정확히 일치해야 합니다. 절대 축약하거나 일부만 쓰지 마세요 — 부분 일치는 렌더링 오류를 유발합니다.
         """;
 
     private const string WidgetExampleEn = """

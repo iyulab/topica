@@ -122,28 +122,32 @@ export async function* streamContent(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    const lines = buffer.split("\n\n");
-    buffer = lines.pop() ?? "";
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() ?? "";
 
-    for (const line of lines) {
-      const data = line.replace(/^data: /, "").trim();
-      if (!data) continue;
-      try {
-        const parsed = JSON.parse(data) as { delta?: string; done?: boolean; content?: Content };
-        if (parsed.done) {
-          yield { done: true, content: parsed.content };
-          return;
+      for (const line of lines) {
+        const data = line.replace(/^data: /, "").trim();
+        if (!data) continue;
+        try {
+          const parsed = JSON.parse(data) as { delta?: string; done?: boolean; content?: Content };
+          if (parsed.done) {
+            yield { done: true, content: parsed.content };
+            return;
+          }
+          if (parsed.delta) yield { delta: parsed.delta };
+        } catch {
+          // ignore malformed
         }
-        if (parsed.delta) yield { delta: parsed.delta };
-      } catch {
-        // ignore malformed
       }
     }
+  } finally {
+    reader.cancel().catch(() => {});
   }
 }
 
@@ -239,28 +243,32 @@ export async function* streamChatMessage(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    const lines = buffer.split("\n\n");
-    buffer = lines.pop() ?? "";
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() ?? "";
 
-    for (const line of lines) {
-      const data = line.replace(/^data: /, "").trim();
-      if (!data) continue;
-      try {
-        const parsed = JSON.parse(data) as { delta?: string; done?: boolean; message?: ChatMessage };
-        if (parsed.done) {
-          yield { done: true, msg: parsed.message };
-          return;
+      for (const line of lines) {
+        const data = line.replace(/^data: /, "").trim();
+        if (!data) continue;
+        try {
+          const parsed = JSON.parse(data) as { delta?: string; done?: boolean; message?: ChatMessage };
+          if (parsed.done) {
+            yield { done: true, msg: parsed.message };
+            return;
+          }
+          if (parsed.delta) yield { delta: parsed.delta };
+        } catch {
+          // ignore malformed
         }
-        if (parsed.delta) yield { delta: parsed.delta };
-      } catch {
-        // ignore malformed
       }
     }
+  } finally {
+    reader.cancel().catch(() => {});
   }
 }
 
@@ -275,25 +283,29 @@ export async function* surveyStream(topicId: string, signal?: AbortSignal): Asyn
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    const lines = buffer.split("\n\n");
-    buffer = lines.pop() ?? "";
+      const lines = buffer.split("\n\n");
+      buffer = lines.pop() ?? "";
 
-    for (const line of lines) {
-      const data = line.replace(/^data: /, "").trim();
-      if (!data) continue;
-      try {
-        const parsed = JSON.parse(data) as { question?: string; done?: boolean };
-        if (parsed.done) return;
-        if (parsed.question) yield parsed.question;
-      } catch {
-        // ignore malformed
+      for (const line of lines) {
+        const data = line.replace(/^data: /, "").trim();
+        if (!data) continue;
+        try {
+          const parsed = JSON.parse(data) as { question?: string; done?: boolean };
+          if (parsed.done) return;
+          if (parsed.question) yield parsed.question;
+        } catch {
+          // ignore malformed
+        }
       }
     }
+  } finally {
+    reader.cancel().catch(() => {});
   }
 }
 

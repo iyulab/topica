@@ -11,25 +11,44 @@ interface Props {
   topicIndex?: Record<string, string>; // 토픽명 → topicId
 }
 
-/** [[TopicName]] 을 markdown 링크 또는 볼드체로 변환. */
+/** [[TopicName]] 을 markdown 링크 또는 볼드체로 변환. 코드 펜스 내부는 건너뜀. */
 export function preprocessWikiLinks(
   content: string,
   topicIndex: Record<string, string>
 ): string {
-  return content.replace(/\[\[([^\]\n]+)\]\]/g, (_, raw: string) => {
+  const fences: string[] = [];
+  const stripped = content.replace(/```[\s\S]*?```/g, (match) => {
+    const idx = fences.length;
+    fences.push(match);
+    return `\x00FENCE${idx}\x00`;
+  });
+
+  const processed = stripped.replace(/\[\[([^\]\n]+)\]\]/g, (_, raw: string) => {
     const pipeIdx = raw.indexOf("|");
     const title = (pipeIdx >= 0 ? raw.slice(0, pipeIdx) : raw).trim();
     const display = (pipeIdx >= 0 ? raw.slice(pipeIdx + 1) : raw).trim();
     const id = topicIndex[title];
     return id ? `[${display}](topic:${id})` : `**${display}**`;
   });
+
+  return processed.replace(/\x00FENCE(\d+)\x00/g, (_, idx) => fences[parseInt(idx, 10)]);
 }
 
 function normalizeDeclart(raw: string): string {
   const text = raw.trim();
   const fenceMatch = text.match(/^```[^\n]*\n([\s\S]*?)```$/s);
-  if (fenceMatch) return fenceMatch[1].trim();
-  return text;
+  const toml = fenceMatch ? fenceMatch[1].trim() : text;
+
+  // LLM이 parent에 축약 라벨을 쓰는 경우 실제 label로 보정
+  const labels: string[] = [];
+  for (const m of toml.matchAll(/\blabel\s*=\s*['"]([^'"]+)['"]/g)) {
+    labels.push(m[1]);
+  }
+  return toml.replace(/\bparent\s*=\s*(['"])([^'"]+)\1/g, (match, q, parentVal) => {
+    if (labels.includes(parentVal)) return match;
+    const fullLabel = labels.find(l => l.startsWith(parentVal));
+    return fullLabel ? `parent = ${q}${fullLabel}${q}` : match;
+  });
 }
 
 function DeclartBlock({ code }: { code: string }) {

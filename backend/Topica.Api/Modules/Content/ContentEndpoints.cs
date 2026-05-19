@@ -78,13 +78,17 @@ public static class ContentEndpoints
             ctx.Response.Headers.CacheControl = "no-cache";
             ctx.Response.Headers.Connection = "keep-alive";
 
-            await foreach (var chunk in svc.StreamGenerateAsync(topicId, req.Type, req.Level, ct))
+            try
             {
-                var data = JsonSerializer.Serialize(chunk, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                await ctx.Response.WriteAsync($"data: {data}\n\n", Encoding.UTF8, ct);
-                await ctx.Response.Body.FlushAsync(ct);
+                await foreach (var chunk in svc.StreamGenerateAsync(topicId, req.Type, req.Level, ct))
+                {
+                    var data = JsonSerializer.Serialize(chunk, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                    await ctx.Response.WriteAsync($"data: {data}\n\n", Encoding.UTF8, ct);
+                    await ctx.Response.Body.FlushAsync(ct);
+                }
+                await ctx.Response.CompleteAsync();
             }
-            await ctx.Response.CompleteAsync();
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         });
 
         return app;

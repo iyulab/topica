@@ -45,13 +45,17 @@ public static class ChatEndpoints
             ctx.Response.Headers.CacheControl = "no-cache";
             ctx.Response.Headers.Connection = "keep-alive";
 
-            await foreach (var chunk in svc.SendStreamAsync(topicId, req.Message, ct))
+            try
             {
-                var data = JsonSerializer.Serialize(chunk, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-                await ctx.Response.WriteAsync($"data: {data}\n\n", Encoding.UTF8, ct);
-                await ctx.Response.Body.FlushAsync(ct);
+                await foreach (var chunk in svc.SendStreamAsync(topicId, req.Message, ct))
+                {
+                    var data = JsonSerializer.Serialize(chunk, new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+                    await ctx.Response.WriteAsync($"data: {data}\n\n", Encoding.UTF8, ct);
+                    await ctx.Response.Body.FlushAsync(ct);
+                }
+                await ctx.Response.CompleteAsync();
             }
-            await ctx.Response.CompleteAsync();
+            catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
         });
 
         group.MapDelete("/", async (Guid topicId, ChatService svc, CancellationToken ct) =>

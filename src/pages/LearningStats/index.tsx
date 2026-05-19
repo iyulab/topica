@@ -76,6 +76,8 @@ function LearningPathGraph({ graph, onGhostClick }: {
   return (
     <svg
       viewBox={`0 0 ${GW} ${GH}`}
+      role="img"
+      aria-label="학습 경로 연결망 그래프"
       style={{ width: "100%", maxWidth: GW, display: "block", margin: "0 auto", overflow: "visible" }}
     >
       {/* Edges */}
@@ -95,7 +97,15 @@ function LearningPathGraph({ graph, onGhostClick }: {
 
       {/* Nodes */}
       {nodes.map(n => n.studied ? (
-        <g key={n.id} style={{ cursor: "pointer" }} onClick={() => onGhostClick(n.id, n.title)}>
+        <g
+          key={n.id}
+          role="button"
+          tabIndex={0}
+          aria-label={`${n.title} — 학습 완료. 스튜디오 열기`}
+          style={{ cursor: "pointer" }}
+          onClick={() => onGhostClick(n.id, n.title)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onGhostClick(n.id, n.title); } }}
+        >
           <circle cx={n.x} cy={n.y} r={NR} fill="#6c63ff" stroke="#fff" strokeWidth={2} />
           <text
             x={n.x} y={n.y + NR + 11}
@@ -106,7 +116,15 @@ function LearningPathGraph({ graph, onGhostClick }: {
           </text>
         </g>
       ) : (
-        <g key={n.id} style={{ cursor: "pointer" }} onClick={() => onGhostClick(n.id, n.title)}>
+        <g
+          key={n.id}
+          role="button"
+          tabIndex={0}
+          aria-label={`${n.title} — 이어서 탐구 가능. 스튜디오 열기`}
+          style={{ cursor: "pointer" }}
+          onClick={() => onGhostClick(n.id, n.title)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onGhostClick(n.id, n.title); } }}
+        >
           <circle
             cx={n.x} cy={n.y} r={GHOST_R}
             fill="none" stroke="#aaa" strokeWidth={1.5} strokeDasharray="4 3"

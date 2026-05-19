@@ -192,6 +192,7 @@ export default function GraphPage() {
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, color: "#888" }}>레벨:</span>
           <select
+            aria-label="최소 레벨"
             value={minLevel}
             onChange={(e) => { const v = Number(e.target.value); setMinLevel(v); if (v > maxLevel) setMaxLevel(v); }}
             style={{ padding: "3px 6px", border: "1px solid #ddd", borderRadius: 6, fontSize: 12 }}
@@ -200,6 +201,7 @@ export default function GraphPage() {
           </select>
           <span style={{ fontSize: 12, color: "#aaa" }}>~</span>
           <select
+            aria-label="최대 레벨"
             value={maxLevel}
             onChange={(e) => { const v = Number(e.target.value); setMaxLevel(v); if (v < minLevel) setMinLevel(v); }}
             style={{ padding: "3px 6px", border: "1px solid #ddd", borderRadius: 6, fontSize: 12 }}
@@ -220,7 +222,7 @@ export default function GraphPage() {
         <p style={{ color: "#aaa" }}>현재 필터 조건에 해당하는 토픽이 없습니다.</p>
       ) : (
         <div style={{ background: "#fff", borderRadius: 12, padding: 12, boxShadow: "0 1px 4px rgba(0,0,0,0.08)" }}>
-          <svg width={W} height={H}>
+          <svg width={W} height={H} role="img" aria-label="토픽 관계 그래프">
             {selected && (() => {
               const from = nodes.find((nd) => nd.topic.id === selected);
               if (!from) return null;
@@ -273,7 +275,16 @@ export default function GraphPage() {
               const textCol = isSelected ? "#fff" : "#333";
 
               return (
-                <g key={n.topic.id} onClick={() => setSelected(n.topic.id === selected ? null : n.topic.id)} style={{ cursor: "pointer" }}>
+                <g
+                  key={n.topic.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${n.topic.title} (레벨 ${n.topic.userLevel})${isSelected ? " — 선택됨" : ""}`}
+                  aria-pressed={isSelected}
+                  onClick={() => setSelected(n.topic.id === selected ? null : n.topic.id)}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(n.topic.id === selected ? null : n.topic.id); } }}
+                  style={{ cursor: "pointer" }}
+                >
                   <circle cx={n.x} cy={n.y} r={R}
                     fill={fill}
                     stroke={strokeColor}
@@ -292,8 +303,12 @@ export default function GraphPage() {
             {/* Ghost nodes — missing [[링크]] topics (click to create + enqueue) */}
             {ghostNodes.map((g) => (
               <g key={`ghost-${g.title}`}
+                role="button"
+                tabIndex={0}
+                aria-label={`${g.title} — 클릭하면 학습 큐에 추가`}
                 style={{ cursor: "pointer" }}
                 onClick={() => handleGhostClick(g.title)}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleGhostClick(g.title); } }}
               >
                 <title>{g.title} — 클릭하면 학습 큐에 추가</title>
                 <circle cx={g.x} cy={g.y} r={R - 4}

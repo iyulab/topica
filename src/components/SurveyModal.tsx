@@ -36,11 +36,43 @@ export default function SurveyModal({ topicId, onClose }: Props) {
     return () => ctrl.abort();
   }, [topicId]);
 
-  // 모달 열릴 때 포커스 이동, ESC로 닫기
+  // 모달 열릴 때 포커스 이동, ESC·Tab focus trap
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
-    dialogRef.current?.focus();
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const getFocusable = () =>
+      Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => !el.closest('[aria-hidden="true"]'));
+
+    dialog.focus();
+
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") { onClose(); return; }
+      if (e.key !== "Tab") return;
+
+      const focusable = getFocusable();
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey) {
+        if (document.activeElement === first || document.activeElement === dialog) {
+          e.preventDefault();
+          last.focus();
+        }
+      } else {
+        if (document.activeElement === last || document.activeElement === dialog) {
+          e.preventDefault();
+          first.focus();
+        }
+      }
+    };
+
     document.addEventListener("keydown", handler);
     return () => {
       document.removeEventListener("keydown", handler);

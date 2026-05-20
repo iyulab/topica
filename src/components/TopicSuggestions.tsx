@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { getSuggestedNextTopics, createTopic } from "../lib/api";
 import { useLearningQueueStore } from "../lib/store";
 
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function TopicSuggestions({ topicId }: Props) {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { addItem, items: queueItems } = useLearningQueueStore();
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -30,7 +32,7 @@ export default function TopicSuggestions({ topicId }: Props) {
       const topic = await createTopic(title, 5);
       navigate(`/topics/${topic.id}/studio`);
     } catch {
-      setError("토픽 생성에 실패했습니다. 다시 시도해 주세요.");
+      setError(t('suggestions.error'));
     } finally {
       setLoadingTitle(null);
     }
@@ -50,7 +52,7 @@ export default function TopicSuggestions({ topicId }: Props) {
       addItem({ topicId: topic.id, title: topic.title, addedAt: new Date().toISOString() });
       setQueuedTitles((s) => new Set(s).add(title));
     } catch {
-      setError("토픽 생성에 실패했습니다. 다시 시도해 주세요.");
+      setError(t('suggestions.error'));
     } finally {
       setLoadingTitle(null);
     }
@@ -65,7 +67,7 @@ export default function TopicSuggestions({ topicId }: Props) {
       border: "1px solid #e0dcff",
     }}>
       <p style={{ margin: "0 0 10px", fontSize: 13, color: "#6c63ff", fontWeight: 600 }}>
-        이 내용에서 언급된 토픽 — 이어서 배워볼까요?
+        {t('suggestions.next.title')}
       </p>
       {error && (
         <p style={{ margin: "0 0 8px", fontSize: 12, color: "#d00" }}>{error}</p>
@@ -94,7 +96,7 @@ export default function TopicSuggestions({ topicId }: Props) {
               <button
                 onClick={() => handleEnqueue(title)}
                 disabled={busy || queued}
-                title={queued ? "학습 큐에 추가됨" : "학습 큐에 추가"}
+                title={queued ? t('topic.queue.in') : t('topic.queue.add')}
                 style={{
                   padding: "5px 10px",
                   background: queued ? "#e8f5e9" : "#fff",

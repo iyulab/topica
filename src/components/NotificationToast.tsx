@@ -5,6 +5,7 @@ import {
   requestPermission,
   sendNotification,
 } from "@tauri-apps/plugin-notification";
+import i18n from "../lib/i18n";
 
 interface Toast {
   id: string;
@@ -26,12 +27,12 @@ async function sendOsNotification(title: string, body: string) {
   }
 }
 
-const CONTENT_TYPE_LABELS: Record<string, string> = {
-  Summary: "요약",
-  Lecture: "강의",
-  Flashcard: "플래시카드",
-  Quiz: "퀴즈",
-  Mindmap: "마인드맵",
+const CONTENT_TYPE_KEYS: Record<string, string> = {
+  Summary: "studio.tab.summary",
+  Lecture: "studio.tab.lecture",
+  Flashcard: "studio.tab.flashcard",
+  Quiz: "studio.tab.quiz",
+  Mindmap: "studio.tab.mindmap",
 };
 
 export default function NotificationToast() {
@@ -41,8 +42,9 @@ export default function NotificationToast() {
     const off = topicaWs.on((msg: WsMessage) => {
       if (msg.type === "content_ready") {
         const type = msg.contentType as string;
-        const label = CONTENT_TYPE_LABELS[type] ?? type;
-        const message = `${label} 생성 완료!`;
+        const labelKey = CONTENT_TYPE_KEYS[type];
+        const label = labelKey ? i18n.t(labelKey) : type;
+        const message = i18n.t("toast.content.done", { label });
 
         const toast: Toast = { id: Date.now().toString(), message };
         setToasts((prev) => [...prev, toast]);

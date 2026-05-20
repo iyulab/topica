@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getChatHistory, streamChatMessage, clearChatHistory, type ChatMessage } from "../lib/api";
 import MarkdownRenderer from "./MarkdownRenderer";
 
@@ -7,6 +8,7 @@ interface Props {
 }
 
 export default function ChatPanel({ topicId }: Props) {
+  const { t } = useTranslation();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -75,12 +77,12 @@ export default function ChatPanel({ topicId }: Props) {
   };
 
   const handleClear = async () => {
-    if (!confirm("대화 내용을 모두 삭제하시겠습니까?")) return;
+    if (!confirm(t('chat.clear') + "?")) return;
     await clearChatHistory(topicId);
     setMessages([]);
   };
 
-  if (loading) return <div style={{ padding: 20, color: "#aaa", fontSize: 13 }}>대화 내역 불러오는 중...</div>;
+  if (loading) return <div style={{ padding: 20, color: "#aaa", fontSize: 13 }}>{t('chat.loading')}</div>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "clamp(400px, 60vh, 700px)" }}>
@@ -91,22 +93,22 @@ export default function ChatPanel({ topicId }: Props) {
             onClick={handleClear}
             style={{ fontSize: 12, color: "#999", background: "none", border: "none", cursor: "pointer" }}
           >
-            대화 초기화
+            {t('chat.clear')}
           </button>
         )}
       </div>
 
       {/* Messages */}
-      <div role="log" aria-live="polite" aria-label="채팅 메시지" style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingBottom: 12 }}>
+      <div role="log" aria-live="polite" aria-label={t('chat.messages.aria')} style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: 12, paddingBottom: 12 }}>
         {messages.length === 0 && (
           <div style={{ textAlign: "center", color: "#bbb", fontSize: 13, padding: "40px 0" }}>
-            이 토픽에 대해 무엇이든 물어보세요.
+            {t('chat.empty')}
           </div>
         )}
         {messages.map((msg) => (
           <div
             key={msg.id}
-            aria-label={msg.role === 0 ? "내 메시지" : "AI 응답"}
+            aria-label={msg.role === 0 ? t('chat.my.message') : t('chat.ai.response')}
             style={{
               display: "flex",
               justifyContent: msg.role === 0 ? "flex-end" : "flex-start",
@@ -136,7 +138,7 @@ export default function ChatPanel({ topicId }: Props) {
           <div style={{ display: "flex", justifyContent: "flex-start" }}>
             <div
               role="status"
-              aria-label="AI 응답 생성 중"
+              aria-label={t('chat.ai.generating')}
               style={{
                 padding: "10px 14px",
                 borderRadius: "12px 12px 12px 4px",
@@ -172,8 +174,8 @@ export default function ChatPanel({ topicId }: Props) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-          placeholder="질문을 입력하세요... (Enter로 전송)"
-          aria-label="질문 입력"
+          placeholder={t('chat.placeholder.full')}
+          aria-label={t('chat.input.aria')}
           disabled={sending}
           style={{
             flex: 1,
@@ -198,7 +200,7 @@ export default function ChatPanel({ topicId }: Props) {
             fontWeight: 600,
           }}
         >
-          전송
+          {t('chat.send')}
         </button>
       </div>
     </div>

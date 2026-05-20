@@ -186,10 +186,18 @@
   "stats.score.title": "Avg score: {{score}}%",
 
   "chat.placeholder": "Ask a question...",
+  "chat.placeholder.full": "Ask a question... (Enter to send)",
   "chat.send": "Send",
   "chat.sending": "Generating response...",
   "chat.empty": "Ask anything about this topic.",
   "chat.error": "An error occurred while generating a response.",
+  "chat.loading": "Loading chat history...",
+  "chat.clear": "Clear chat",
+  "chat.messages.aria": "Chat messages",
+  "chat.my.message": "My message",
+  "chat.ai.response": "AI response",
+  "chat.ai.generating": "AI is generating response",
+  "chat.input.aria": "Question input",
 
   "flashcard.empty": "No cards.",
   "flashcard.parse.error": "Could not parse flashcard data.",
@@ -201,6 +209,16 @@
   "flashcard.done": "All cards studied!",
   "flashcard.front": "Front",
   "flashcard.back": "Back",
+  "flashcard.all.done": "🎉 All cards studied!",
+  "flashcard.restart": "Restart",
+  "flashcard.dots.aria": "Card list",
+  "flashcard.keyboard.hint": "Space: flip · ← →: navigate",
+  "flashcard.show.answer": "Show answer",
+  "flashcard.show.question": "Show question",
+  "flashcard.aria.front": "Front: {{text}}. Click to reveal answer",
+  "flashcard.aria.back": "Back: {{text}}. Click to show front",
+  "flashcard.dot.aria": "Card {{num}}",
+  "flashcard.dot.done.aria": "Card {{num}} (studied)",
 
   "quiz.empty": "No questions.",
   "quiz.parse.error": "Could not parse quiz data.",
@@ -239,5 +257,9 @@
 
   "suggestions.title": "Suggested Topics",
   "suggestions.empty": "No suggestions.",
-  "suggestions.add": "Add"
+  "suggestions.add": "Add",
+  "suggestions.next.title": "Topics mentioned in this content — explore next?",
+  "suggestions.error": "Failed to create topic. Please try again.",
+
+  "toast.content.done": "{{label}} generated"
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Card {
   front: string;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function FlashcardViewer({ body, onComplete }: Props) {
+  const { t } = useTranslation();
   const [isFlipped, setIsFlipped] = useState(false);
   const [current, setCurrent] = useState(0);
   const [studied, setStudied] = useState<Set<number>>(new Set());
@@ -46,7 +48,6 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
     if (cards.length === 0) return;
     const handler = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      // Space/Enter은 flip card div의 onKeyDown이 처리 — 글로벌에서 제외하여 이중 호출 방지
       if (e.key === "ArrowLeft") prev();
       else if (e.key === "ArrowRight") next();
     };
@@ -55,9 +56,9 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
   }, [current, cards.length]);
 
   if (cards.length === 0 && body.trim()) {
-    return <p style={{ color: "#aaa" }}>플래시카드 데이터를 파싱할 수 없습니다.</p>;
+    return <p style={{ color: "#aaa" }}>{t('flashcard.parse.error')}</p>;
   }
-  if (cards.length === 0) return <p style={{ color: "#aaa" }}>카드가 없습니다.</p>;
+  if (cards.length === 0) return <p style={{ color: "#aaa" }}>{t('flashcard.empty')}</p>;
 
   const card = cards[current];
   const studiedCount = studied.size;
@@ -72,7 +73,7 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
           display: "flex", alignItems: "center", justifyContent: "space-between",
           fontSize: 14,
         }}>
-          <span style={{ color: "#2e7d32", fontWeight: 600 }}>🎉 카드 {cards.length}장 모두 학습 완료!</span>
+          <span style={{ color: "#2e7d32", fontWeight: 600 }}>{t('flashcard.all.done')}</span>
           <button
             onClick={() => { setStudied(new Set()); goTo(0); }}
             style={{
@@ -80,16 +81,16 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
               color: "#2e7d32", cursor: "pointer", fontSize: 12, padding: "4px 10px",
             }}
           >
-            처음부터
+            {t('flashcard.restart')}
           </button>
         </div>
       )}
 
       {/* Progress */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <span style={{ fontSize: 13, color: "#888" }}>{current + 1} / {cards.length}</span>
+        <span style={{ fontSize: 13, color: "#888" }}>{t('flashcard.progress', { current: current + 1, total: cards.length })}</span>
         <span style={{ fontSize: 12, color: studiedCount === cards.length ? "#43a047" : "#888" }}>
-          학습 완료 {studiedCount} / {cards.length}
+          {t('flashcard.studied', { count: studiedCount })}
         </span>
       </div>
 
@@ -97,7 +98,9 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
       <div
         role="button"
         tabIndex={0}
-        aria-label={isFlipped ? `뒷면: ${card.back}. 클릭하여 앞면 보기` : `앞면: ${card.front}. 클릭하여 답 확인`}
+        aria-label={isFlipped
+          ? t('flashcard.aria.back', { text: card.back })
+          : t('flashcard.aria.front', { text: card.front })}
         onClick={flip}
         onKeyDown={(e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); } }}
         style={{ perspective: 1000, cursor: "pointer", minHeight: 200, userSelect: "none" }}
@@ -125,29 +128,31 @@ export default function FlashcardViewer({ body, onComplete }: Props) {
 
       {/* Keyboard hint */}
       <p style={{ textAlign: "center", fontSize: 11, color: "#bbb", margin: "8px 0 0" }}>
-        Space: 뒤집기 · ← →: 이동
+        {t('flashcard.keyboard.hint')}
       </p>
 
       {/* Nav buttons */}
       <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 12 }}>
         <button onClick={prev} disabled={current === 0} style={navBtnStyle(current === 0)}>
-          ← 이전
+          {t('flashcard.prev')}
         </button>
         <button onClick={flip} style={navBtnStyle(false)}>
-          {isFlipped ? "질문 보기" : "답 보기"}
+          {isFlipped ? t('flashcard.show.question') : t('flashcard.show.answer')}
         </button>
         <button onClick={next} disabled={current === cards.length - 1} style={navBtnStyle(current === cards.length - 1)}>
-          다음 →
+          {t('flashcard.next')}
         </button>
       </div>
 
       {/* Dot navigator */}
-      <div role="group" aria-label="카드 목록" style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 16, justifyContent: "center" }}>
+      <div role="group" aria-label={t('flashcard.dots.aria')} style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 16, justifyContent: "center" }}>
         {cards.map((_, i) => (
           <button
             key={i}
             onClick={() => goTo(i)}
-            aria-label={`${i + 1}번째 카드${studied.has(i) ? " (학습 완료)" : ""}`}
+            aria-label={studied.has(i)
+              ? t('flashcard.dot.done.aria', { num: i + 1 })
+              : t('flashcard.dot.aria', { num: i + 1 })}
             aria-current={i === current ? "true" : undefined}
             style={{
               width: 10,

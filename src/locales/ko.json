@@ -186,10 +186,18 @@
   "stats.score.title": "평균 점수: {{score}}%",
 
   "chat.placeholder": "질문을 입력하세요...",
+  "chat.placeholder.full": "질문을 입력하세요... (Enter로 전송)",
   "chat.send": "전송",
   "chat.sending": "답변 생성 중...",
   "chat.empty": "이 토픽에 대해 무엇이든 질문하세요.",
   "chat.error": "응답 생성 중 오류가 발생했습니다.",
+  "chat.loading": "대화 내역 불러오는 중...",
+  "chat.clear": "대화 초기화",
+  "chat.messages.aria": "채팅 메시지",
+  "chat.my.message": "내 메시지",
+  "chat.ai.response": "AI 응답",
+  "chat.ai.generating": "AI 응답 생성 중",
+  "chat.input.aria": "질문 입력",
 
   "flashcard.empty": "카드가 없습니다.",
   "flashcard.parse.error": "플래시카드 데이터를 파싱할 수 없습니다.",
@@ -201,6 +209,16 @@
   "flashcard.done": "모든 카드를 학습했습니다!",
   "flashcard.front": "앞면",
   "flashcard.back": "뒷면",
+  "flashcard.all.done": "🎉 모든 카드를 학습했습니다!",
+  "flashcard.restart": "처음부터",
+  "flashcard.dots.aria": "카드 목록",
+  "flashcard.keyboard.hint": "Space: 뒤집기 · ← →: 이동",
+  "flashcard.show.answer": "답 보기",
+  "flashcard.show.question": "질문 보기",
+  "flashcard.aria.front": "앞면: {{text}}. 클릭하여 답 확인",
+  "flashcard.aria.back": "뒷면: {{text}}. 클릭하여 앞면 보기",
+  "flashcard.dot.aria": "{{num}}번째 카드",
+  "flashcard.dot.done.aria": "{{num}}번째 카드 (학습 완료)",
 
   "quiz.empty": "문제가 없습니다.",
   "quiz.parse.error": "퀴즈 데이터를 파싱할 수 없습니다.",
@@ -239,5 +257,9 @@
 
   "suggestions.title": "추천 토픽",
   "suggestions.empty": "추천 토픽이 없습니다.",
-  "suggestions.add": "추가"
+  "suggestions.add": "추가",
+  "suggestions.next.title": "이 내용에서 언급된 토픽 — 이어서 배워볼까요?",
+  "suggestions.error": "토픽 생성에 실패했습니다. 다시 시도해 주세요.",
+
+  "toast.content.done": "{{label}} 생성 완료"
 }

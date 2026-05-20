@@ -22,7 +22,7 @@ public class TagService(ApplicationDbContext db, IChatClient chatClient, ILogger
 
         var messages = new List<ChatMessage>
         {
-            new(ChatRole.System, PromptBuilder.TagSystem()),
+            new(ChatRole.System, PromptBuilder.TagSystem("en")),
             new(ChatRole.User, $"Topic: {topic.Title}\n\nSummary:\n{summaryContent}"),
         };
 

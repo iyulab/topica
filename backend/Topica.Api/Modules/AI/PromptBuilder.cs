@@ -303,7 +303,7 @@ public static class PromptBuilder
             반드시 지킬 것: 각 'parent' 값은 다른 노드의 'label' 전체 문자열과 정확히 일치해야 합니다. 절대 축약하지 마세요 — 부분 일치는 렌더링 오류를 유발합니다.
             """;
 
-    public static string TagSystem() =>
+    public static string TagSystem(string language = "en") =>
         """
         Extract 3-8 concise topic tags from the given content.
         Return ONLY a JSON array of strings, nothing else.
@@ -311,15 +311,23 @@ public static class PromptBuilder
         Tags should be lowercase, 1-3 words each.
         """;
 
-    public static string SurveySystem(Topic topic) =>
-        $"""
-        You are a learning assistant helping understand a learner's goals for the topic "{topic.Title}".
-        Ask up to 5 short, focused questions (one per line, ending with '?') to understand:
-        - Their current knowledge level
-        - What they want to learn
-        - Any specific aspects they care about
-        Keep each question concise (1 sentence). Ask them in order, one per line.
-        """;
+    public static string SurveySystem(Topic topic, string language) => language == "en"
+        ? $"""
+          You are a learning assistant helping understand a learner's goals for "{topic.Title}".
+          Ask up to 5 short, focused questions (one per line, ending with '?') to understand:
+          - Their current knowledge level
+          - What they want to learn
+          - Any specific aspects they care about
+          Keep each question concise (1 sentence). Ask them in order, one per line.
+          """
+        : $"""
+          당신은 "{topic.Title}" 토픽의 학습 목표를 파악하는 학습 도우미입니다.
+          학습자의 다음 사항을 파악하기 위해 최대 5개의 짧고 집중된 질문을 한 줄씩 작성하세요('?'로 끝내기):
+          - 현재 지식 수준
+          - 배우고 싶은 내용
+          - 관심 있는 특정 측면
+          각 질문은 한 문장으로 간결하게 작성하세요.
+          """;
 
     public static string ChatSystem(Topic topic, string researchContext, string language) => language == "en"
         ? $"""

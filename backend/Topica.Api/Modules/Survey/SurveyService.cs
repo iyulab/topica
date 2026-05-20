@@ -1,12 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
+using Microsoft.Extensions.Options;
 using System.Runtime.CompilerServices;
 using Topica.Api.Modules.AI;
 using Topica.Infrastructure.Data;
 
 namespace Topica.Api.Modules.Survey;
 
-public class SurveyService(ApplicationDbContext db, IChatClient chatClient)
+public class SurveyService(ApplicationDbContext db, IChatClient chatClient, IOptionsMonitor<AiSettings> options)
 {
     public async IAsyncEnumerable<string> StreamQuestionsAsync(
         Guid topicId,
@@ -15,7 +16,7 @@ public class SurveyService(ApplicationDbContext db, IChatClient chatClient)
         var topic = await db.Topics.FindAsync([topicId], ct);
         if (topic is null) yield break;
 
-        var systemPrompt = PromptBuilder.SurveySystem(topic);
+        var systemPrompt = PromptBuilder.SurveySystem(topic, options.CurrentValue.Language);
         var messages = new List<ChatMessage>
         {
             new(ChatRole.System, systemPrompt),

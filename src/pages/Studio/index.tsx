@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { generateContent, getContents, getLevelRecommendation, getRelatedTopics, getTags, getTopics, postLearningSession, streamContent, type Content, type LevelRecommendation, type RelatedTopic, type Topic } from "../../lib/api";
 import { topicaWs, type WsMessage } from "../../lib/ws";
 import { useQueueStore } from "../../lib/store";
@@ -14,6 +15,7 @@ import { CardSkeleton, ContentSkeleton, QuizSkeleton } from "../../components/Sk
 import TopicSuggestions from "../../components/TopicSuggestions";
 
 export default function Studio() {
+  const { t } = useTranslation();
   const { topicId } = useParams<{ topicId: string }>();
   const navigate = useNavigate();
   const [topic, setTopic] = useState<Topic | null>(null);
@@ -59,13 +61,11 @@ export default function Studio() {
       .finally(() => setLoading(false));
   }, [topicId]);
 
-  // Refresh on WS content_ready for this topic
   useEffect(() => {
     if (!topicId) return;
     const off = topicaWs.on((msg: WsMessage) => {
       if (msg.type === "content_ready" && msg.topicId === topicId) {
         getContents(topicId).then(setContents);
-        // If Summary ready, tags/related may now exist
         if ((msg.contentType as string) === "Summary") {
           getTags(topicId).then(setTags).catch(() => {});
           getRelatedTopics(topicId).then(setRelatedTopics).catch(() => {});
@@ -75,7 +75,6 @@ export default function Studio() {
     return off;
   }, [topicId]);
 
-  // Abort streaming on unmount
   useEffect(() => () => { streamAbortRef.current?.abort(); }, []);
 
   const topicIndex = useMemo(
@@ -85,7 +84,6 @@ export default function Studio() {
 
   const handleRegenerate = async (tabIndex: number) => {
     if (!topicId || !topic) return;
-    // Abort any in-progress stream before starting a new one
     streamAbortRef.current?.abort();
     streamAbortRef.current = null;
     const myGen = ++generationRef.current;
@@ -95,7 +93,6 @@ export default function Studio() {
     if (tabIndex === 0 || tabIndex === 1 || tabIndex === 2 || tabIndex === 3) {
       const abort = new AbortController();
       streamAbortRef.current = abort;
-      // For flashcard/quiz: show skeleton (set empty string, don't update on delta)
       const isJsonType = tabIndex === 2 || tabIndex === 3;
       if (isJsonType) setStreamingText("");
       try {
@@ -133,8 +130,8 @@ export default function Studio() {
   );
   if (!topic) return (
     <div style={{ padding: 24 }}>
-      <p>토픽을 찾을 수 없습니다.</p>
-      <button onClick={() => navigate("/")}>목록으로</button>
+      <p>{t('studio.notfound')}</p>
+      <button onClick={() => navigate("/")}>{t('studio.back')}</button>
     </div>
   );
 
@@ -145,12 +142,20 @@ export default function Studio() {
   const mindmap = contents.find((c) => c.type === 4);
 
   const tabs = [
-    { label: "요약", content: summary, isGenerating: topicActiveItems.some((i) => i.contentType === "Summary"), isFailed: topicFailedItems.find((f) => f.contentType === "Summary"), renderer: "markdown" },
-    { label: "강의", content: lecture, isGenerating: topicActiveItems.some((i) => i.contentType === "Lecture"), isFailed: topicFailedItems.find((f) => f.contentType === "Lecture"), renderer: "markdown" },
-    { label: "플래시카드", content: flashcard, isGenerating: topicActiveItems.some((i) => i.contentType === "Flashcard"), isFailed: topicFailedItems.find((f) => f.contentType === "Flashcard"), renderer: "flashcard" },
-    { label: "퀴즈", content: quiz, isGenerating: topicActiveItems.some((i) => i.contentType === "Quiz"), isFailed: topicFailedItems.find((f) => f.contentType === "Quiz"), renderer: "quiz" },
-    { label: "마인드맵", content: mindmap, isGenerating: topicActiveItems.some((i) => i.contentType === "Mindmap"), isFailed: topicFailedItems.find((f) => f.contentType === "Mindmap"), renderer: "mindmap" },
-    { label: "채팅", content: null, isGenerating: false, isFailed: undefined, renderer: "chat" },
+    { label: t('studio.tab.summary'), content: summary, isGenerating: topicActiveItems.some((i) => i.contentType === "Summary"), isFailed: topicFailedItems.find((f) => f.contentType === "Summary"), renderer: "markdown" },
+    { label: t('studio.tab.lecture'), content: lecture, isGenerating: topicActiveItems.some((i) => i.contentType === "Lecture"), isFailed: topicFailedItems.find((f) => f.contentType === "Lecture"), renderer: "markdown" },
+    { label: t('studio.tab.flashcard'), content: flashcard, isGenerating: topicActiveItems.some((i) => i.contentType === "Flashcard"), isFailed: topicFailedItems.find((f) => f.contentType === "Flashcard"), renderer: "flashcard" },
+    { label: t('studio.tab.quiz'), content: quiz, isGenerating: topicActiveItems.some((i) => i.contentType === "Quiz"), isFailed: topicFailedItems.find((f) => f.contentType === "Quiz"), renderer: "quiz" },
+    { label: t('studio.tab.mindmap'), content: mindmap, isGenerating: topicActiveItems.some((i) => i.contentType === "Mindmap"), isFailed: topicFailedItems.find((f) => f.contentType === "Mindmap"), renderer: "mindmap" },
+    { label: "💬", content: null, isGenerating: false, isFailed: undefined, renderer: "chat" },
+  ];
+
+  const contentLabels = [
+    t('studio.tab.summary'),
+    t('studio.tab.lecture'),
+    t('studio.tab.flashcard'),
+    t('studio.tab.quiz'),
+    t('studio.tab.mindmap'),
   ];
 
   return (
@@ -159,7 +164,7 @@ export default function Studio() {
         onClick={() => navigate("/")}
         style={{ background: "none", border: "none", color: "#6c63ff", cursor: "pointer", marginBottom: 8, fontSize: 13 }}
       >
-        ← 목록으로
+        {t('studio.back')}
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
@@ -173,20 +178,20 @@ export default function Studio() {
               borderRadius: 10, fontSize: 11, color: "#b07800", cursor: "help",
             }}
           >
-            📊 추천 Lv. {recommendation.recommendedLevel}
+            {t('studio.level.recommend', { level: recommendation.recommendedLevel })}
           </span>
         )}
         <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
           <button
-            onClick={() => exportTopicMarkdown(topic, contents, tags)}
+            onClick={() => exportTopicMarkdown(topic, contents, tags, contentLabels)}
             style={{
               padding: "4px 12px", border: "1px solid #ddd",
               borderRadius: 6, background: "none", color: "#666",
               cursor: "pointer", fontSize: 12,
             }}
-            title="Markdown 파일로 내보내기"
+            title={t('studio.export.title')}
           >
-            ↓ 내보내기
+            {t('studio.export')}
           </button>
           <button
             onClick={() => setShowSurvey(true)}
@@ -196,7 +201,7 @@ export default function Studio() {
               cursor: "pointer", fontSize: 12,
             }}
           >
-            🎯 학습 목표 설문
+            🎯 {t('studio.survey')}
           </button>
         </div>
       </div>
@@ -228,7 +233,7 @@ export default function Studio() {
       {/* Tabs */}
       <div
         role="tablist"
-        aria-label="콘텐츠 탭"
+        aria-label={t('studio.tabs.label')}
         onKeyDown={(e) => {
           const count = tabs.length;
           let next = activeTab;
@@ -267,7 +272,7 @@ export default function Studio() {
           >
             {tab.label}{" "}
             <span aria-hidden="true">
-              {tab.renderer === "chat" ? "💬" : tab.isGenerating ? "⏳" : tab.isFailed ? "⚠️" : tab.content ? "✓" : "—"}
+              {tab.renderer === "chat" ? "" : tab.isGenerating ? "⏳" : tab.isFailed ? "⚠️" : tab.content ? "✓" : "—"}
             </span>
           </button>
         ))}
@@ -282,7 +287,7 @@ export default function Studio() {
                   color: showPrevious ? "#6c63ff" : "#888", cursor: "pointer", fontSize: 12,
                 }}
               >
-                {showPrevious ? "현재 버전" : "이전 버전"}
+                {showPrevious ? t('studio.current') : t('studio.previous')}
               </button>
             )}
             <button
@@ -294,7 +299,7 @@ export default function Studio() {
                 color: "#888", cursor: regenerating === activeTab ? "not-allowed" : "pointer", fontSize: 12,
               }}
             >
-              {regenerating === activeTab ? "⏳" : "🔄"} 재생성
+              {regenerating === activeTab ? "⏳" : "🔄"} {t('studio.regenerate')}
             </button>
           </div>
         )}
@@ -308,7 +313,7 @@ export default function Studio() {
         </div>
       ) : regenerating === activeTab && streamingText !== null ? (
         <div style={{ background: "#fff", borderRadius: 8, padding: 20, boxShadow: "0 1px 3px rgba(0,0,0,0.08)" }}>
-          <div style={{ color: "#6c63ff", fontSize: 12, marginBottom: 12 }}>✦ AI가 콘텐츠를 생성하고 있습니다...</div>
+          <div style={{ color: "#6c63ff", fontSize: 12, marginBottom: 12 }}>{t('studio.streaming')}</div>
           {tabs[activeTab].renderer === "flashcard" ? (
             <CardSkeleton />
           ) : tabs[activeTab].renderer === "quiz" ? (
@@ -328,7 +333,7 @@ export default function Studio() {
             <>
               {showPrevious && tabs[activeTab].content!.previousBody && (
                 <div style={{ marginBottom: 8, padding: "4px 10px", background: "#fff9e6", border: "1px solid #ffe58f", borderRadius: 6, fontSize: 12, color: "#7d5c00" }}>
-                  📜 이전 버전 — 재생성 전 플래시카드입니다.
+                  {t('studio.previous.label')} — {t('studio.tab.flashcard')}
                 </div>
               )}
               <FlashcardViewer
@@ -343,7 +348,7 @@ export default function Studio() {
             <>
               {showPrevious && tabs[activeTab].content!.previousBody && (
                 <div style={{ marginBottom: 8, padding: "4px 10px", background: "#fff9e6", border: "1px solid #ffe58f", borderRadius: 6, fontSize: 12, color: "#7d5c00" }}>
-                  📜 이전 버전 — 재생성 전 퀴즈입니다.
+                  {t('studio.previous.label')} — {t('studio.tab.quiz')}
                 </div>
               )}
               <QuizViewer
@@ -370,7 +375,7 @@ export default function Studio() {
             <>
               {showPrevious && tabs[activeTab].content!.previousBody && (
                 <div style={{ marginBottom: 8, padding: "4px 10px", background: "#fff9e6", border: "1px solid #ffe58f", borderRadius: 6, fontSize: 12, color: "#7d5c00" }}>
-                  📜 이전 버전 — 재생성 전 내용입니다.
+                  {t('studio.previous.label')}
                 </div>
               )}
               <MarkdownRenderer
@@ -391,7 +396,7 @@ export default function Studio() {
                   fontSize: 12,
                   color: "#7d5c00",
                 }}>
-                  💡 이 콘텐츠는 다른 토픽과의 연결 정보가 없습니다. 🔄 재생성하면 관련 토픽 링크가 추가됩니다.
+                  {t('studio.nolinks')}
                 </div>
               )}
               <TopicSuggestions topicId={topicId} />
@@ -410,12 +415,12 @@ export default function Studio() {
         }}>
           {tabs[activeTab].isGenerating ? (
             <div style={{ textAlign: "left" }}>
-              <div style={{ color: "#6c63ff", fontSize: 13, marginBottom: 12 }}>✦ AI가 콘텐츠를 생성하고 있습니다...</div>
+              <div style={{ color: "#6c63ff", fontSize: 13, marginBottom: 12 }}>{t('studio.streaming')}</div>
               <ContentSkeleton />
             </div>
           ) : tabs[activeTab].isFailed ? (
             <div>
-              <div style={{ color: "#d00", marginBottom: 8 }}>❌ 생성 실패</div>
+              <div style={{ color: "#d00", marginBottom: 8 }}>{t('studio.failed')}</div>
               <div style={{ fontSize: 12, color: "#888", marginBottom: 16 }}>{tabs[activeTab].isFailed!.errorMessage}</div>
               <button
                 onClick={() => handleRegenerate(activeTab)}
@@ -425,11 +430,11 @@ export default function Studio() {
                   borderRadius: 6, color: "#d00", cursor: "pointer", fontSize: 13,
                 }}
               >
-                {regenerating === activeTab ? "⏳" : "⚠️"} 재시도
+                {regenerating === activeTab ? "⏳" : "⚠️"} {t('studio.retry')}
               </button>
             </div>
           ) : (
-            "아직 생성되지 않았습니다."
+            t('studio.empty')
           )}
         </div>
       )}
@@ -437,7 +442,7 @@ export default function Studio() {
 
       {relatedTopics.length > 0 && (
         <div style={{ marginTop: 24 }}>
-          <h4 style={{ margin: "0 0 12px", fontSize: 13, color: "#888", fontWeight: 600 }}>관련 토픽</h4>
+          <h4 style={{ margin: "0 0 12px", fontSize: 13, color: "#888", fontWeight: 600 }}>{t('studio.related')}</h4>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {relatedTopics.map((rel) => (
               <button
@@ -460,23 +465,22 @@ export default function Studio() {
   );
 }
 
-const CONTENT_LABELS = ["요약", "강의", "플래시카드", "퀴즈", "마인드맵"];
-
-function exportTopicMarkdown(topic: { title: string; description: string; userLevel: number }, contents: { type: number; body: string }[], tags: string[]) {
-  const lines: string[] = [
-    `# ${topic.title}`,
-    "",
-  ];
+function exportTopicMarkdown(
+  topic: { title: string; description: string; userLevel: number },
+  contents: { type: number; body: string }[],
+  tags: string[],
+  labels: string[],
+) {
+  const lines: string[] = [`# ${topic.title}`, ""];
   if (topic.description) lines.push(`> ${topic.description}`, "");
-  lines.push(`**레벨:** ${topic.userLevel}/10`);
-  if (tags.length > 0) lines.push(`**태그:** ${tags.join(", ")}`);
+  lines.push(`**Lv.** ${topic.userLevel}/10`);
+  if (tags.length > 0) lines.push(`**Tags:** ${tags.join(", ")}`);
   lines.push("", "---", "");
 
   for (const c of contents) {
-    const label = CONTENT_LABELS[c.type] ?? `콘텐츠 ${c.type}`;
+    const label = labels[c.type] ?? `Content ${c.type}`;
     lines.push(`## ${label}`, "");
     if (c.type === 2 || c.type === 3) {
-      // Flashcard / Quiz: try pretty-print JSON
       try {
         const parsed = JSON.parse(c.body);
         lines.push("```json", JSON.stringify(parsed, null, 2), "```");

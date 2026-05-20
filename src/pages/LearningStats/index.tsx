@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { UWidget } from "@iyulab/u-widgets/react";
 import type { UWidgetSpec } from "@iyulab/u-widgets";
 import {
   getLearningStats, getPathSuggestions, getLearningGraphData, getReviewSuggestions,
   type LearningStats, type PathSuggestion, type LearningGraphData, type ReviewSuggestion,
 } from "../../lib/api";
+import i18n from "../../lib/i18n";
 
 // --- Learning Path Graph SVG ---
 
@@ -40,7 +42,6 @@ function computeLayout(graph: LearningGraphData): GraphNode[] {
   const ghostRy = Math.min(130, GH / 2 - PAD);
   const ghostNodes = placeRadial(ghost, GW / 2, GH / 2, ghostRx, ghostRy);
 
-  // Simple repulsion between studied nodes
   const px = studiedNodes.map(n => n.x);
   const py = studiedNodes.map(n => n.y);
   for (let iter = 0; iter < 100; iter++) {
@@ -68,6 +69,7 @@ function LearningPathGraph({ graph, onGhostClick }: {
   graph: LearningGraphData;
   onGhostClick: (id: string, title: string) => void;
 }) {
+  const { t } = useTranslation();
   const nodes = useMemo(() => computeLayout(graph), [graph]);
   const nodeMap = useMemo(() => new Map(nodes.map(n => [n.id, n])), [nodes]);
 
@@ -77,7 +79,7 @@ function LearningPathGraph({ graph, onGhostClick }: {
     <svg
       viewBox={`0 0 ${GW} ${GH}`}
       role="img"
-      aria-label="학습 경로 연결망 그래프"
+      aria-label={t('stats.graph.aria')}
       style={{ width: "100%", maxWidth: GW, display: "block", margin: "0 auto", overflow: "visible" }}
     >
       {/* Edges */}
@@ -101,7 +103,7 @@ function LearningPathGraph({ graph, onGhostClick }: {
           key={n.id}
           role="button"
           tabIndex={0}
-          aria-label={`${n.title} — 학습 완료. 스튜디오 열기`}
+          aria-label={t('stats.node.studied.aria', { title: n.title })}
           style={{ cursor: "pointer" }}
           onClick={() => onGhostClick(n.id, n.title)}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onGhostClick(n.id, n.title); } }}
@@ -120,7 +122,7 @@ function LearningPathGraph({ graph, onGhostClick }: {
           key={n.id}
           role="button"
           tabIndex={0}
-          aria-label={`${n.title} — 이어서 탐구 가능. 스튜디오 열기`}
+          aria-label={t('stats.node.explorable.aria', { title: n.title })}
           style={{ cursor: "pointer" }}
           onClick={() => onGhostClick(n.id, n.title)}
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onGhostClick(n.id, n.title); } }}
@@ -149,6 +151,7 @@ function Widget({ spec }: { spec: UWidgetSpec }) {
 }
 
 export default function LearningStats() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [stats, setStats] = useState<LearningStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -181,11 +184,13 @@ export default function LearningStats() {
     return () => { cancelled = true; };
   }, []);
 
-  if (loading) return <div style={{ padding: 24, color: "#aaa" }}>통계 불러오는 중…</div>;
+  const locale = i18n.language === "ko" ? "ko-KR" : "en-US";
+
+  if (loading) return <div style={{ padding: 24, color: "#aaa" }}>{t('stats.loading')}</div>;
   if (!stats) return (
     <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
-      <h2 style={{ marginBottom: 24 }}>학습 통계</h2>
-      <div style={{ color: "#e53e3e", marginBottom: 12 }}>통계를 불러올 수 없습니다.</div>
+      <h2 style={{ marginBottom: 24 }}>{t('stats.title')}</h2>
+      <div style={{ color: "#e53e3e", marginBottom: 12 }}>{t('stats.load.error')}</div>
       <button
         onClick={() => setRetryKey(k => k + 1)}
         style={{
@@ -198,7 +203,7 @@ export default function LearningStats() {
           cursor: "pointer",
         }}
       >
-        재시도
+        {t('stats.retry')}
       </button>
     </div>
   );
@@ -207,24 +212,23 @@ export default function LearningStats() {
   const streak7dData = [...stats.streak7d].reverse().map((count, i) => {
     const d = new Date(today);
     d.setDate(d.getDate() - (6 - i));
-    return { day: d.toLocaleDateString("ko-KR", { weekday: "short" }), sessions: count };
+    return { day: d.toLocaleDateString(locale, { weekday: "short" }), sessions: count };
   });
 
-  // Only show graph when there are edges (connections between studied and unlearned topics)
   const hasGraphData = graphData && graphData.edges.length > 0;
 
   return (
     <div style={{ padding: 24, maxWidth: 800, margin: "0 auto" }}>
-      <h2 style={{ marginBottom: 24 }}>학습 통계</h2>
+      <h2 style={{ marginBottom: 24 }}>{t('stats.title')}</h2>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
         <Widget spec={{
           widget: "metric",
-          data: { value: stats.totalTopicsStudied, unit: "토픽", label: "학습한 토픽" }
+          data: { value: stats.totalTopicsStudied, unit: t('stats.topics.unit'), label: t('stats.topics.label') }
         }} />
         <Widget spec={{
           widget: "metric",
-          data: { value: stats.totalStudyMinutes, unit: "분", label: "총 학습 시간" }
+          data: { value: stats.totalStudyMinutes, unit: t('stats.time.unit'), label: t('stats.time.label') }
         }} />
       </div>
 
@@ -235,7 +239,7 @@ export default function LearningStats() {
             value: Math.min(stats.todaySessionCount, 5),
             min: 0,
             max: 5,
-            label: `오늘 학습 (${stats.todaySessionCount}회 / 목표 5회)`
+            label: t('stats.today.label', { count: stats.todaySessionCount }),
           }
         }} />
       </div>
@@ -245,16 +249,16 @@ export default function LearningStats() {
           widget: "chart.bar",
           data: streak7dData,
           mapping: { x: "day", y: "sessions" },
-          options: { locale: "ko-KR" }
+          options: { locale },
         }} />
       </div>
 
       {stats.scoreByTopic.length > 0 && (
         <Widget spec={{
           widget: "chart.bar",
-          data: stats.scoreByTopic.map(t => ({ topic: t.title, score: Math.round(t.avgScore) })),
+          data: stats.scoreByTopic.map(tp => ({ topic: tp.title, score: Math.round(tp.avgScore) })),
           mapping: { x: "topic", y: "score" },
-          options: { yFormat: { type: "number", suffix: "점" } }
+          options: { yFormat: { type: "number", suffix: t('stats.score.suffix') } }
         }} />
       )}
 
@@ -267,20 +271,20 @@ export default function LearningStats() {
           border: "1px solid #e0dcff",
         }}>
           <p style={{ margin: "0 0 12px", fontSize: 13, color: "#6c63ff", fontWeight: 600 }}>
-            학습 경로 연결망
+            {t('stats.graph.title')}
           </p>
           <div style={{ display: "flex", gap: 16, marginBottom: 10, fontSize: 11, color: "#888" }}>
             <span>
               <svg width="12" height="12" style={{ verticalAlign: "middle", marginRight: 4 }}>
                 <circle cx="6" cy="6" r="6" fill="#6c63ff" />
               </svg>
-              학습 완료
+              {t('stats.graph.studied')}
             </span>
             <span>
               <svg width="12" height="12" style={{ verticalAlign: "middle", marginRight: 4 }}>
                 <circle cx="6" cy="6" r="5" fill="none" stroke="#aaa" strokeWidth="1.5" strokeDasharray="3 2" />
               </svg>
-              이어서 탐구 가능
+              {t('stats.graph.explorable')}
             </span>
           </div>
           <LearningPathGraph
@@ -299,7 +303,7 @@ export default function LearningStats() {
           border: "1px solid #e0dcff",
         }}>
           <p style={{ margin: "0 0 10px", fontSize: 12, color: "#888" }}>
-            이어서 탐구할 수 있는 토픽
+            {t('stats.path.title')}
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {pathSuggestions.map(({ id, title }) => (
@@ -334,7 +338,7 @@ export default function LearningStats() {
           border: "1px solid #ffd6d6",
         }}>
           <p style={{ margin: "0 0 10px", fontSize: 12, color: "#888" }}>
-            복습이 필요한 토픽 (퀴즈 평균 70% 미만)
+            {t('stats.review.title')}
           </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {reviewSuggestions.map(({ id, title, avgScore }) => (
@@ -352,7 +356,7 @@ export default function LearningStats() {
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "#fff5f5")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "#fff")}
-                title={`평균 점수: ${avgScore}%`}
+                title={t('stats.score.title', { score: avgScore })}
               >
                 {title} ({avgScore}%)
               </button>
@@ -363,7 +367,7 @@ export default function LearningStats() {
 
       {stats.totalTopicsStudied === 0 && (
         <p style={{ textAlign: "center", color: "#aaa", marginTop: 32 }}>
-          아직 학습 기록이 없습니다. 플래시카드나 퀴즈를 완료하면 여기에 표시됩니다.
+          {t('stats.empty.full')}
         </p>
       )}
     </div>

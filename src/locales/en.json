@@ -261,5 +261,19 @@
   "suggestions.next.title": "Topics mentioned in this content — explore next?",
   "suggestions.error": "Failed to create topic. Please try again.",
 
-  "toast.content.done": "{{label}} generated"
+  "toast.content.done": "{{label}} generated",
+
+  "mindmap.legacy": "This mindmap is in an old format.",
+  "mindmap.legacy.hint": "Click Regenerate to update to the new format.",
+  "mindmap.failed": "Could not render the mindmap.",
+  "mindmap.failed.hint": "Click Regenerate to try again.",
+  "mindmap.rendering": "Rendering…",
+
+  "settings.provider.ollama": "OpenAI-compatible Server",
+  "settings.provider.local": "lm-supply (Local)",
+  "settings.model.recommended": "Recommended",
+  "settings.model.lowcost": "Recommended, low cost",
+  "settings.model.highperf": "High performance",
+  "settings.model.legacy": "Legacy",
+  "settings.language.ko.name": "Korean"
 }

@@ -261,5 +261,19 @@
   "suggestions.next.title": "이 내용에서 언급된 토픽 — 이어서 배워볼까요?",
   "suggestions.error": "토픽 생성에 실패했습니다. 다시 시도해 주세요.",
 
-  "toast.content.done": "{{label}} 생성 완료"
+  "toast.content.done": "{{label}} 생성 완료",
+
+  "mindmap.legacy": "이전 형식의 마인드맵입니다.",
+  "mindmap.legacy.hint": "재생성 버튼을 눌러 새 형식으로 업데이트하세요.",
+  "mindmap.failed": "마인드맵을 렌더링할 수 없습니다.",
+  "mindmap.failed.hint": "재생성 버튼을 눌러 다시 시도하세요.",
+  "mindmap.rendering": "렌더링 중…",
+
+  "settings.provider.ollama": "OpenAI 호환 서버",
+  "settings.provider.local": "lm-supply (로컬)",
+  "settings.model.recommended": "권장",
+  "settings.model.lowcost": "권장, 저비용",
+  "settings.model.highperf": "고성능",
+  "settings.model.legacy": "구형",
+  "settings.language.ko.name": "한국어"
 }

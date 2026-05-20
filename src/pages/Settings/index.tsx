@@ -3,11 +3,11 @@ import { useTranslation } from "react-i18next";
 import i18n from "../../lib/i18n";
 import { getSettings, saveSettings, detectOllamaEmbeddingDimension, triggerReindex, type AiSettings } from "../../lib/api";
 
-function providerLabel(provider: string): string {
+function providerLabel(provider: string, t: (key: string) => string): string {
   switch (provider) {
     case "openai": return "OpenAI";
-    case "ollama": return "OpenAI 호환 서버";
-    case "local": return "lm-supply (로컬)";
+    case "ollama": return t('settings.provider.ollama');
+    case "local": return t('settings.provider.local');
     default: return provider;
   }
 }
@@ -150,7 +150,7 @@ export default function Settings() {
             {isFullyLocal ? t('settings.local.active') : t('settings.local.external')}
           </div>
           <div style={{ color: "#595959", fontSize: 12 }}>
-            {t('settings.chat.provider')} <strong>{providerLabel(settings.chatProvider)}</strong>　{t('settings.embedding.provider')} <strong>{providerLabel(settings.embeddingProvider)}</strong>
+            {t('settings.chat.provider')} <strong>{providerLabel(settings.chatProvider, t)}</strong>　{t('settings.embedding.provider')} <strong>{providerLabel(settings.embeddingProvider, t)}</strong>
           </div>
           {isLocalModelLoading && (
             <div style={{ color: "#9e97e8", fontSize: 12, marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
@@ -322,7 +322,7 @@ export default function Settings() {
                 background: "#fff",
               }}
             >
-              <option value="gpt-4o-mini">gpt-4o-mini (권장)</option>
+              <option value="gpt-4o-mini">gpt-4o-mini ({t('settings.model.recommended')})</option>
               <option value="gpt-4o">gpt-4o</option>
               <option value="gpt-4-turbo">gpt-4-turbo</option>
             </select>
@@ -345,9 +345,9 @@ export default function Settings() {
                 background: "#fff",
               }}
             >
-              <option value="text-embedding-3-small">text-embedding-3-small (권장, 저비용)</option>
-              <option value="text-embedding-3-large">text-embedding-3-large (고성능)</option>
-              <option value="text-embedding-ada-002">text-embedding-ada-002 (구형)</option>
+              <option value="text-embedding-3-small">text-embedding-3-small ({t('settings.model.lowcost')})</option>
+              <option value="text-embedding-3-large">text-embedding-3-large ({t('settings.model.highperf')})</option>
+              <option value="text-embedding-ada-002">text-embedding-ada-002 ({t('settings.model.legacy')})</option>
             </select>
             <p style={{ margin: "6px 0 0", fontSize: 12, color: "#888" }}>
               {t('settings.embedding.hint')}
@@ -358,7 +358,7 @@ export default function Settings() {
             <label htmlFor="prompt-language" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
               {t('settings.language')}
               <span style={{ fontWeight: 400, color: "#888", marginLeft: 8, fontSize: 12 }}>
-                ({t('settings.language.os')} {detectOsLanguage() === "ko" ? "한국어" : "English"})
+                ({t('settings.language.os')} {detectOsLanguage() === "ko" ? t('settings.language.ko.name') : "English"})
               </span>
             </label>
             <select

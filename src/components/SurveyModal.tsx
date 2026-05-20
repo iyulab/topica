@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { saveSurveyAnswers, surveyStream } from "../lib/api";
 
 const TITLE_ID = "survey-modal-title";
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function SurveyModal({ topicId, onClose }: Props) {
+  const { t } = useTranslation();
   const [questions, setQuestions] = useState<string[]>([]);
   const [answers, setAnswers] = useState<string[]>([]);
   const [streaming, setStreaming] = useState(true);
@@ -108,12 +110,12 @@ export default function SurveyModal({ topicId, onClose }: Props) {
         }}
       >
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-          <h3 id={TITLE_ID} style={{ margin: 0, color: "#222" }}>학습 목표 파악</h3>
-          <button onClick={onClose} aria-label="모달 닫기" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#888" }}>✕</button>
+          <h3 id={TITLE_ID} style={{ margin: 0, color: "#222" }}>{t('survey.title')}</h3>
+          <button onClick={onClose} aria-label={t('survey.close')} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: "#888" }}>✕</button>
         </div>
 
         {streaming && questions.length === 0 && (
-          <p style={{ color: "#888", fontSize: 14 }}>AI가 질문을 준비하는 중...</p>
+          <p style={{ color: "#888", fontSize: 14 }}>{t('survey.loading')}</p>
         )}
 
         {questions.map((q, i) => (
@@ -127,7 +129,7 @@ export default function SurveyModal({ topicId, onClose }: Props) {
                 updated[i] = e.target.value;
                 setAnswers(updated);
               }}
-              placeholder="답변 입력..."
+              placeholder={t('survey.answer.placeholder')}
               style={{
                 width: "100%", padding: "8px 12px", border: "1px solid #ddd",
                 borderRadius: 6, fontSize: 13, boxSizing: "border-box",
@@ -137,7 +139,7 @@ export default function SurveyModal({ topicId, onClose }: Props) {
         ))}
 
         {streaming && questions.length > 0 && (
-          <p style={{ color: "#888", fontSize: 13, margin: "4px 0" }}>⏳ 질문 생성 중...</p>
+          <p style={{ color: "#888", fontSize: 13, margin: "4px 0" }}>{t('survey.streaming')}</p>
         )}
 
         {!streaming && (
@@ -151,7 +153,7 @@ export default function SurveyModal({ topicId, onClose }: Props) {
                 fontSize: 14, fontWeight: 600, opacity: saving ? 0.7 : 1,
               }}
             >
-              {saving ? "저장 중..." : "완료 — 학습 시작"}
+              {saving ? t('survey.saving') : t('survey.submit')}
             </button>
             <button
               onClick={onClose}
@@ -160,7 +162,7 @@ export default function SurveyModal({ topicId, onClose }: Props) {
                 borderRadius: 8, cursor: "pointer", fontSize: 14,
               }}
             >
-              건너뛰기
+              {t('survey.skip')}
             </button>
           </div>
         )}

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { submitEval } from "../lib/api";
 
 interface Question {
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function QuizViewer({ body, topicId, contentId, onLevelChange, onComplete }: Props) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<Map<number, number>>(new Map());
   const [current, setCurrent] = useState(0);
   const [submitted, setSubmitted] = useState(false);
@@ -41,10 +43,10 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
   }, [submitted]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (questions.length === 0 && body.trim()) {
-    return <p style={{ color: "#aaa" }}>퀴즈 데이터를 파싱할 수 없습니다.</p>;
+    return <p style={{ color: "#aaa" }}>{t('quiz.parse.error')}</p>;
   }
 
-  if (questions.length === 0) return <p style={{ color: "#aaa" }}>문제가 없습니다.</p>;
+  if (questions.length === 0) return <p style={{ color: "#aaa" }}>{t('quiz.empty')}</p>;
 
   if (submitted && evalResult) {
     const percent = Math.round((score / questions.length) * 100);
@@ -59,18 +61,18 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
     return (
       <div style={{ textAlign: "center", padding: "32px 0" }}>
         <div style={{ fontSize: 48, marginBottom: 8 }}>{emoji}</div>
-        <h3 style={{ fontSize: 20, margin: "0 0 8px" }}>퀴즈 완료!</h3>
+        <h3 style={{ fontSize: 20, margin: "0 0 8px" }}>{t('quiz.complete')}</h3>
         <div style={{ fontSize: 32, fontWeight: 700, color: "#6c63ff", marginBottom: 4 }}>
-          {score} / {questions.length}
+          {t('quiz.score', { score, total: questions.length })}
         </div>
-        <div style={{ fontSize: 15, color: "#888", marginBottom: 20 }}>{percent}% 정답</div>
+        <div style={{ fontSize: 15, color: "#888", marginBottom: 20 }}>{t('quiz.percent', { percent })}</div>
         {evalResult.levelChanged && (
           <div style={{
             background: "#e8f5e9", border: "1px solid #4caf50",
             borderRadius: 8, padding: "10px 16px", marginBottom: 20,
             fontSize: 13, color: "#2e7d32", display: "inline-block",
           }}>
-            🎯 레벨이 {evalResult.newLevel}로 조정되었습니다
+            {t('quiz.level.changed', { level: evalResult.newLevel })}
           </div>
         )}
         <div>
@@ -81,7 +83,7 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
               border: "none", borderRadius: 6, cursor: "pointer", fontSize: 14, fontWeight: 600,
             }}
           >
-            다시 도전
+            {t('quiz.retry')}
           </button>
         </div>
       </div>
@@ -108,8 +110,8 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16, fontSize: 13, color: "#888" }}>
-        <span>문제 {current + 1} / {questions.length}</span>
-        <span>점수: {score}/{questions.length}</span>
+        <span>{t('quiz.progress', { current: current + 1, total: questions.length })}</span>
+        <span>{t('quiz.score', { score, total: questions.length })}</span>
       </div>
 
       {evalResult && (
@@ -121,8 +123,8 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
           color: evalResult.levelChanged ? "#2e7d32" : "#666",
         }}>
           {evalResult.levelChanged
-            ? `🎯 레벨이 ${evalResult.newLevel}로 조정되었습니다`
-            : `현재 레벨 유지 (Lv. ${evalResult.newLevel})`}
+            ? t('quiz.level.changed', { level: evalResult.newLevel })
+            : t('quiz.level.same', { level: evalResult.newLevel })}
         </div>
       )}
 
@@ -142,7 +144,7 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
             }
 
             const answerLabel = answered
-              ? i === q.answer ? " (정답)" : i === chosen ? " (오답)" : ""
+              ? i === q.answer ? t('quiz.answer.correct') : i === chosen ? t('quiz.answer.wrong') : ""
               : "";
             return (
               <button
@@ -174,7 +176,7 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <button onClick={() => setCurrent((c) => Math.max(0, c - 1))} disabled={current === 0} style={navBtnStyle(current === 0)}>
-          ← 이전
+          {t('quiz.prev')}
         </button>
 
         {allAnswered && topicId && contentId && !submitted && (
@@ -185,12 +187,12 @@ export default function QuizViewer({ body, topicId, contentId, onLevelChange, on
               border: "none", borderRadius: 6, cursor: "pointer", fontSize: 13, fontWeight: 600,
             }}
           >
-            결과 제출
+            {t('quiz.submit')}
           </button>
         )}
 
         <button onClick={() => setCurrent((c) => Math.min(questions.length - 1, c + 1))} disabled={current === questions.length - 1} style={navBtnStyle(current === questions.length - 1)}>
-          다음 →
+          {t('quiz.next')}
         </button>
       </div>
     </div>

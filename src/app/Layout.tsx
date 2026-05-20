@@ -1,9 +1,11 @@
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { BookOpen, Network, BarChart2, Settings, type LucideIcon } from "lucide-react";
 import { useAppStore, useQueueStore, useLearningQueueStore } from "../lib/store";
 import NotificationToast from "../components/NotificationToast";
 
 export default function Layout() {
+  const { t } = useTranslation();
   const { isConnected } = useAppStore();
   const { activeItems } = useQueueStore();
   const { items: queueItems, removeItem } = useLearningQueueStore();
@@ -13,7 +15,7 @@ export default function Layout() {
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "system-ui, sans-serif" }}>
       {/* Sidebar */}
-      <nav aria-label="주 메뉴" style={{
+      <nav aria-label={t('nav.menu')} style={{
         width: 200,
         background: "#1a1a2e",
         color: "#e0e0e0",
@@ -26,21 +28,21 @@ export default function Layout() {
         <div style={{ padding: "0 16px 16px", fontSize: 18, fontWeight: 700, color: "#fff" }}>
           Topica
         </div>
-        <NavLink to="/" active={pathname === "/"} label="토픽 목록" icon={BookOpen} />
-        <NavLink to="/graph" active={pathname === "/graph"} label="토픽 그래프" icon={Network} />
-        <NavLink to="/stats" active={pathname === "/stats"} label="학습 통계" icon={BarChart2} />
-        <NavLink to="/settings" active={pathname === "/settings"} label="설정" icon={Settings} />
+        <NavLink to="/" active={pathname === "/"} label={t('nav.topics')} icon={BookOpen} />
+        <NavLink to="/graph" active={pathname === "/graph"} label={t('nav.graph')} icon={Network} />
+        <NavLink to="/stats" active={pathname === "/stats"} label={t('nav.stats')} icon={BarChart2} />
+        <NavLink to="/settings" active={pathname === "/settings"} label={t('nav.settings')} icon={Settings} />
         {activeItems.length > 0 && (
           <div style={{ padding: "8px 16px", fontSize: 12, color: "#ffd54f", display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⏳</span>
-            생성 중 {activeItems.length}건
+            {t('nav.generating', { count: activeItems.length })}
           </div>
         )}
 
         {queueItems.length > 0 && (
           <div style={{ margin: "8px 0", borderTop: "1px solid #2d2d4e", paddingTop: 8 }}>
             <div style={{ padding: "4px 16px 6px", fontSize: 11, color: "#888", fontWeight: 600, letterSpacing: "0.05em" }}>
-              📋 학습 큐 ({queueItems.length})
+              📋 {t('nav.queue', { count: queueItems.length })}
             </div>
             {queueItems.slice(0, 4).map((item) => (
               <div key={item.topicId} style={{ display: "flex", alignItems: "center", padding: "3px 10px 3px 16px", gap: 4 }}>
@@ -58,21 +60,21 @@ export default function Layout() {
                 <button
                   onClick={() => removeItem(item.topicId)}
                   style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: 12, padding: "2px 4px", flexShrink: 0 }}
-                  title="큐에서 제거"
+                  title={t('nav.queue.remove')}
                 >×</button>
               </div>
             ))}
             {queueItems.length > 4 && (
               <div style={{ padding: "2px 16px", fontSize: 11, color: "#666" }}>
-                +{queueItems.length - 4}개 더...
+                {t('nav.queue.more', { count: queueItems.length - 4 })}
               </div>
             )}
           </div>
         )}
 
         <div style={{ marginTop: "auto", padding: "12px 16px", fontSize: 12, color: "#888" }}>
-          백엔드: <span style={{ color: isConnected ? "#4caf50" : "#ff9800" }}>
-            {isConnected ? "연결됨" : "연결 중..."}
+          {t('nav.backend')} <span style={{ color: isConnected ? "#4caf50" : "#ff9800" }}>
+            {isConnected ? t('nav.connected') : t('nav.connecting')}
           </span>
           {!isConnected && (
             <button
@@ -89,7 +91,7 @@ export default function Layout() {
                 cursor: "pointer",
               }}
             >
-              재연결
+              {t('nav.reconnect')}
             </button>
           )}
         </div>

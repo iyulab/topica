@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { createTopic, deleteTopic, getTopics, getReviewSuggestions, type Topic, type TopicSearchParams } from "../../lib/api";
 import { useTopicStore, useQueueStore } from "../../lib/store";
 import LevelBadge from "../../components/LevelBadge";
@@ -8,6 +9,7 @@ import { TopicListSkeleton } from "../../components/SkeletonLoader";
 type SortOption = "updated_desc" | "updated_asc" | "title_asc" | "created_desc";
 
 export default function TopicList() {
+  const { t } = useTranslation();
   const { topics, setTopics, addTopic, removeTopic } = useTopicStore();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -40,13 +42,12 @@ export default function TopicList() {
     getTopics(params)
       .then((result) => {
         setTopics(result);
-        // 필터 없는 전체 로드일 때만 태그 풀 갱신
         if (!debouncedQuery && !activeTags.length) {
           const tags = Array.from(new Set(result.flatMap((t) => t.tags ?? []))).sort();
           setTagPool(tags);
         }
       })
-      .catch(() => setLoadError("토픽 목록을 불러오지 못했습니다."))
+      .catch(() => setLoadError(t('topic.load.error')))
       .finally(() => setLoading(false));
   }, [setTopics, loadKey, debouncedQuery, activeTags, sort]);
 
@@ -66,15 +67,13 @@ export default function TopicList() {
       setAddTitle("");
       setLoadKey((k) => k + 1);
     } catch {
-      setError("토픽 추가에 실패했습니다.");
+      setError(t('topic.add.error'));
     } finally {
       setAdding(false);
     }
   };
 
   const isLevelInvalid = showAdvanced && (addLevel < 1 || addLevel > 10);
-
-  // tagPool is populated on unfiltered loads so tag buttons stay visible during search
   const allTags = tagPool;
 
   const toggleTag = (tag: string) => {
@@ -86,19 +85,19 @@ export default function TopicList() {
   const hasFilter = debouncedQuery || activeTags.length > 0 || sort !== "updated_desc";
 
   const handleDelete = async (id: string, title: string) => {
-    if (!window.confirm(`"${title}" 토픽을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.`)) return;
+    if (!window.confirm(`"${title}" ${t('topic.delete.confirm')}`)) return;
     try {
       await deleteTopic(id);
       removeTopic(id);
     } catch {
-      setError("삭제에 실패했습니다.");
+      setError(t('topic.delete.error'));
     }
   };
 
   return (
     <div style={{ padding: 24, maxWidth: 720, margin: "0 auto" }}>
-      <h2 style={{ margin: "0 0 8px", color: "#222" }}>무엇을 배울까요?</h2>
-      <p style={{ margin: "0 0 20px", color: "#888", fontSize: 14 }}>주제를 입력하면 AI가 요약·강의·퀴즈·마인드맵을 만들어드립니다.</p>
+      <h2 style={{ margin: "0 0 8px", color: "#222" }}>{t('topic.heading')}</h2>
+      <p style={{ margin: "0 0 20px", color: "#888", fontSize: 14 }}>{t('topic.subtitle')}</p>
 
       {/* Add form */}
       <div style={{
@@ -113,8 +112,8 @@ export default function TopicList() {
             value={addTitle}
             onChange={(e) => setAddTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            placeholder="학습할 주제를 입력하세요  예: Python 기초, 머신러닝 원리..."
-            aria-label="학습할 주제"
+            placeholder={t('topic.new.placeholder')}
+            aria-label={t('topic.new.label')}
             style={{
               flex: 1,
               padding: "10px 14px",
@@ -138,7 +137,7 @@ export default function TopicList() {
               whiteSpace: "nowrap",
             }}
           >
-            {adding ? "추가 중..." : "시작하기"}
+            {adding ? t('topic.adding') : t('topic.add')}
           </button>
         </div>
         <div style={{ marginTop: 8 }}>
@@ -148,11 +147,11 @@ export default function TopicList() {
             onClick={() => setShowAdvanced((v) => !v)}
             style={{ background: "none", border: "none", color: "#6c63ff", fontSize: 12, cursor: "pointer", padding: 0 }}
           >
-            {showAdvanced ? "▲ 고급 옵션" : "▼ 고급 옵션"}
+            {showAdvanced ? `▲ ${t('topic.advanced')}` : `▼ ${t('topic.advanced')}`}
           </button>
           {showAdvanced && (
             <div style={{ marginTop: 8, display: "flex", alignItems: "center", gap: 8 }}>
-              <label htmlFor="level-input" style={{ fontSize: 12, color: "#666" }}>학습 레벨 (1–10)</label>
+              <label htmlFor="level-input" style={{ fontSize: 12, color: "#666" }}>{t('topic.level.label')}</label>
               <input
                 id="level-input"
                 type="number"
@@ -172,9 +171,9 @@ export default function TopicList() {
                 }}
               />
               {isLevelInvalid ? (
-                <span id="level-error" style={{ fontSize: 11, color: "#e53935" }}>1–10 사이 값을 입력하세요</span>
+                <span id="level-error" style={{ fontSize: 11, color: "#e53935" }}>{t('topic.level.error')}</span>
               ) : (
-                <span style={{ fontSize: 12, color: "#999" }}>기본값 5 — AI가 자동으로 조정합니다</span>
+                <span style={{ fontSize: 12, color: "#999" }}>{t('topic.level.hint')}</span>
               )}
             </div>
           )}
@@ -189,8 +188,8 @@ export default function TopicList() {
             <input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="제목·설명·내용 검색..."
-              aria-label="토픽 검색"
+              placeholder={t('topic.search.full.placeholder')}
+              aria-label={t('topic.search.label')}
               style={{
                 width: "100%",
                 padding: "8px 36px 8px 12px",
@@ -217,7 +216,7 @@ export default function TopicList() {
                   lineHeight: 1,
                   padding: "0 2px",
                 }}
-                aria-label="검색 지우기"
+                aria-label={t('topic.search.clear')}
               >
                 ×
               </button>
@@ -226,7 +225,7 @@ export default function TopicList() {
           <select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortOption)}
-            aria-label="정렬 기준"
+            aria-label={t('topic.sort.label')}
             style={{
               padding: "8px 10px",
               border: "1px solid #ddd",
@@ -237,10 +236,10 @@ export default function TopicList() {
               flexShrink: 0,
             }}
           >
-            <option value="updated_desc">최근 수정순</option>
-            <option value="updated_asc">오래된 수정순</option>
-            <option value="title_asc">제목순</option>
-            <option value="created_desc">최근 추가순</option>
+            <option value="updated_desc">{t('topic.sort.updated_desc')}</option>
+            <option value="updated_asc">{t('topic.sort.updated_asc')}</option>
+            <option value="title_asc">{t('topic.sort.title_asc')}</option>
+            <option value="created_desc">{t('topic.sort.created_desc')}</option>
           </select>
         </div>
         {allTags.length > 0 && (
@@ -285,24 +284,22 @@ export default function TopicList() {
               cursor: "pointer",
             }}
           >
-            재시도
+            {t('topic.retry')}
           </button>
         </div>
       ) : !hasFilter && topics.length === 0 ? (
         <p style={{ color: "#999", textAlign: "center", padding: "40px 0" }}>
-          아직 토픽이 없습니다. 위에서 추가해보세요!
+          {t('topic.empty')}
         </p>
       ) : hasFilter && topics.length === 0 ? (
         <p style={{ color: "#999", textAlign: "center", padding: "40px 0" }}>
-          {activeTags.length > 0
-            ? `"${activeTags.join(", ")}" 태그와 일치하는 토픽이 없습니다.`
-            : `"${debouncedQuery}"와 일치하는 토픽이 없습니다.`}
+          {t('topic.filter.empty')}
         </p>
       ) : (
         <>
           {hasFilter && (
             <p style={{ fontSize: 12, color: "#888", marginBottom: 8 }}>
-              {topics.length}개 표시
+              {t('topic.count', { count: topics.length })}
             </p>
           )}
           <TopicListWithQueue
@@ -311,7 +308,7 @@ export default function TopicList() {
             onOpen={(id) => navigate(`/topics/${id}/studio`)}
             onDelete={(id) => {
               const topic = topics.find((t) => t.id === id);
-              handleDelete(id, topic?.title ?? "이 토픽");
+              handleDelete(id, topic?.title ?? "");
             }}
           />
         </>
@@ -364,6 +361,7 @@ function TopicCard({
   onOpen: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useTranslation();
   return (
     <div style={{
       background: "#fff",
@@ -374,7 +372,7 @@ function TopicCard({
     }}>
       <button
         onClick={onOpen}
-        aria-label={`${topic.title}${needsReview ? " (복습 필요)" : ""}${activeCount > 0 ? ` — 생성 중 ${activeCount}건` : ""} — 학습하기`}
+        aria-label={`${topic.title}${needsReview ? ` (${t('topic.review.needed')})` : ""}${activeCount > 0 ? ` — ${t('nav.generating', { count: activeCount })}` : ""}`}
         style={{
           flex: 1,
           background: "none",
@@ -401,7 +399,7 @@ function TopicCard({
                 color: "#c0392b",
                 whiteSpace: "nowrap",
               }}>
-                복습 필요
+                {t('topic.review.needed')}
               </span>
             )}
           </div>
@@ -419,14 +417,14 @@ function TopicCard({
             padding: "2px 8px",
             flexShrink: 0,
           }}>
-            ⏳ 생성 중 {activeCount}
+            ⏳ {t('nav.generating', { count: activeCount })}
           </span>
         )}
         <LevelBadge level={topic.userLevel} />
       </button>
       <button
         onClick={onDelete}
-        aria-label={`${topic.title} 삭제`}
+        aria-label={`${topic.title} ${t('topic.delete')}`}
         style={{
           padding: "4px 10px",
           margin: "0 12px 0 0",
@@ -439,7 +437,7 @@ function TopicCard({
           flexShrink: 0,
         }}
       >
-        삭제
+        {t('topic.delete')}
       </button>
     </div>
   );

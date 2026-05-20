@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "../../lib/i18n";
 import { getSettings, saveSettings, detectOllamaEmbeddingDimension, triggerReindex, type AiSettings } from "../../lib/api";
 
 function providerLabel(provider: string): string {
@@ -16,6 +18,7 @@ function detectOsLanguage(): string {
 }
 
 export default function Settings() {
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<AiSettings | null>(null);
   const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("gpt-4o-mini");
@@ -39,9 +42,11 @@ export default function Settings() {
   const loadSettings = () =>
     getSettings()
       .then((s) => {
+        const lang = s.language || detectOsLanguage();
+        i18n.changeLanguage(lang);
         setSettings(s);
         setModel(s.model);
-        setLanguage(s.language || detectOsLanguage());
+        setLanguage(lang);
         setEmbeddingModel(s.embeddingModel || "text-embedding-3-small");
         setEmbeddingDimension(s.embeddingDimension || 1536);
         setOllamaEndpoint(s.ollamaEndpoint || "http://localhost:11434");
@@ -90,6 +95,7 @@ export default function Settings() {
     setSaveError(null);
     try {
       const result = await saveSettings(apiKey, model, language, embeddingModel, embeddingDimension, ollamaEndpoint, ollamaModel, ollamaEmbeddingModel, ollamaApiKey);
+      i18n.changeLanguage(language);
       setSettings((s) => {
         if (!s) return null;
         const newHasApiKey = !!apiKey || (s.hasApiKey && !apiKey);
@@ -112,7 +118,7 @@ export default function Settings() {
       setTimeout(() => setSaved(false), 3000);
       saveButtonRef.current?.focus();
     } catch {
-      setSaveError("저장에 실패했습니다. 백엔드 연결을 확인하세요.");
+      setSaveError(t('settings.save.error'));
     } finally {
       setSaving(false);
     }
@@ -125,18 +131,12 @@ export default function Settings() {
 
   return (
     <div style={{ padding: 24, maxWidth: 600, margin: "0 auto" }}>
-      <h2 style={{ margin: "0 0 24px", color: "#222" }}>설정</h2>
+      <h2 style={{ margin: "0 0 24px", color: "#222" }}>{t('settings.title')}</h2>
 
       {settings && (
         <div style={{
-          background: isFullyLocal
-            ? "#f0eeff"
-            : "#f5f5f5",
-          border: `1px solid ${
-            isFullyLocal
-              ? "#d0c8ff"
-              : "#e0e0e0"
-          }`,
+          background: isFullyLocal ? "#f0eeff" : "#f5f5f5",
+          border: `1px solid ${isFullyLocal ? "#d0c8ff" : "#e0e0e0"}`,
           borderRadius: 8,
           padding: "12px 16px",
           marginBottom: 16,
@@ -144,36 +144,32 @@ export default function Settings() {
         }}>
           <div style={{
             fontWeight: 600,
-            color: isFullyLocal
-              ? "#4338ca"
-              : "#595959",
+            color: isFullyLocal ? "#4338ca" : "#595959",
             marginBottom: 4,
           }}>
-            {isFullyLocal
-              ? "✦ 로컬 AI 활성 (자동 선택)"
-              : "● 외부 AI 제공자 사용 중"}
+            {isFullyLocal ? t('settings.local.active') : t('settings.local.external')}
           </div>
           <div style={{ color: "#595959", fontSize: 12 }}>
-            채팅: <strong>{providerLabel(settings.chatProvider)}</strong>　임베딩: <strong>{providerLabel(settings.embeddingProvider)}</strong>
+            {t('settings.chat.provider')} <strong>{providerLabel(settings.chatProvider)}</strong>　{t('settings.embedding.provider')} <strong>{providerLabel(settings.embeddingProvider)}</strong>
           </div>
           {isLocalModelLoading && (
             <div style={{ color: "#9e97e8", fontSize: 12, marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
               <span style={{ display: "inline-block", width: 10, height: 10, borderRadius: "50%", border: "2px solid #9e97e8", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} />
-              로컬 모델 로딩 중... (초기 실행 시 다운로드 시간이 필요합니다)
+              {t('settings.local.loading')}
             </div>
           )}
           {isLocalModelReady && (
             <div style={{ color: "#28a745", fontSize: 12, marginTop: 6 }}>
-              ✓ 로컬 모델 준비 완료
+              {t('settings.local.ready')}
             </div>
           )}
           {isLocalModelFailed && (
             <div style={{ color: "#dc3545", fontSize: 12, marginTop: 6 }}>
-              ⚠ 로컬 모델 로드 실패 — 로그를 확인하세요
+              {t('settings.local.failed')}
             </div>
           )}
           <div style={{ color: "#595959", fontSize: 11, marginTop: 4 }}>
-            API 키(OpenAI) 또는 호환 서버 설정 시 해당 제공자가 우선 적용됩니다.
+            {t('settings.local.provider.hint')}
           </div>
         </div>
       )}
@@ -191,8 +187,8 @@ export default function Settings() {
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
             <span style={{ fontSize: 16 }}>⚠️</span>
             <div style={{ flex: 1 }}>
-              <strong>임베딩 모델 또는 차원이 변경되었습니다.</strong><br />
-              기존 임베딩 데이터와 차원이 달라 RAG 검색 및 토픽 유사도 결과가 부정확할 수 있습니다.
+              <strong>{t('settings.reindex.warning')}</strong><br />
+              {t('settings.reindex.detail')}
               <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "center" }}>
                 <button
                   disabled={reindexing}
@@ -218,13 +214,13 @@ export default function Settings() {
                     cursor: reindexing ? "not-allowed" : "pointer",
                   }}
                 >
-                  {reindexing ? "재색인 중..." : "재색인 실행"}
+                  {reindexing ? t('settings.reindex.running') : t('settings.reindex.run')}
                 </button>
                 <button
                   onClick={() => setReindexRequired(false)}
                   style={{ background: "none", border: "none", color: "#856404", cursor: "pointer", fontSize: 12, textDecoration: "underline", padding: 0 }}
                 >
-                  나중에
+                  {t('settings.reindex.later')}
                 </button>
               </div>
             </div>
@@ -245,18 +241,18 @@ export default function Settings() {
           justifyContent: "space-between",
           alignItems: "center",
         }}>
-          <span>✓ 재색인 완료 — 토픽 {reindexDone.topicsReindexed}개, RAG {reindexDone.ragReindexed}개 갱신</span>
+          <span>{t('settings.reindex.done', { topics: reindexDone.topicsReindexed, rag: reindexDone.ragReindexed })}</span>
           <button
             onClick={() => setReindexDone(null)}
             style={{ background: "none", border: "none", color: "#155724", cursor: "pointer", fontSize: 12, textDecoration: "underline", padding: 0 }}
           >
-            닫기
+            {t('settings.reindex.close')}
           </button>
         </div>
       )}
 
       <section style={{ background: "#fff", borderRadius: 8, padding: 24, boxShadow: "0 1px 3px rgba(0,0,0,0.08)", marginBottom: 24 }}>
-        <h3 style={{ margin: "0 0 16px", fontSize: 16, color: "#333" }}>AI 제공자</h3>
+        <h3 style={{ margin: "0 0 16px", fontSize: 16, color: "#333" }}>{t('settings.provider')}</h3>
 
         {settings && !settings.hasApiKey && (
           <div style={{
@@ -268,7 +264,7 @@ export default function Settings() {
             fontSize: 13,
             color: "#856404",
           }}>
-            ⚠️ API 키가 설정되지 않았습니다. 로컬 AI(자동 선택)로 콘텐츠를 생성합니다. 초기 모델 다운로드 시 시간이 걸릴 수 있습니다.
+            {t('settings.apikey.missing')}
           </div>
         )}
 
@@ -282,21 +278,21 @@ export default function Settings() {
             fontSize: 13,
             color: "#155724",
           }}>
-            ✓ API 키가 설정되어 있습니다.
+            {t('settings.apikey.set')}
           </div>
         )}
 
         <form onSubmit={handleSave}>
           <div style={{ marginBottom: 16 }}>
             <label htmlFor="openai-api-key" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              OpenAI API 키
+              {t('settings.apikey.label')}
             </label>
             <input
               id="openai-api-key"
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder={settings?.hasApiKey ? "새 키 입력 (기존 키 변경 시)" : "sk-..."}
+              placeholder={settings?.hasApiKey ? t('settings.apikey.placeholder.change') : t('settings.apikey.placeholder.new')}
               style={{
                 width: "100%",
                 padding: "8px 12px",
@@ -311,7 +307,7 @@ export default function Settings() {
 
           <div style={{ marginBottom: 16 }}>
             <label htmlFor="openai-model" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              모델
+              {t('settings.model.label')}
             </label>
             <select
               id="openai-model"
@@ -334,7 +330,7 @@ export default function Settings() {
 
           <div style={{ marginBottom: 16 }}>
             <label htmlFor="embedding-model" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              임베딩 모델
+              {t('settings.embedding.label')}
             </label>
             <select
               id="embedding-model"
@@ -354,15 +350,15 @@ export default function Settings() {
               <option value="text-embedding-ada-002">text-embedding-ada-002 (구형)</option>
             </select>
             <p style={{ margin: "6px 0 0", fontSize: 12, color: "#888" }}>
-              변경 시 기존 임베딩은 다음 Summary 생성 시 자동 갱신됩니다.
+              {t('settings.embedding.hint')}
             </p>
           </div>
 
           <div style={{ marginBottom: 20 }}>
             <label htmlFor="prompt-language" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              프롬프트 언어
+              {t('settings.language')}
               <span style={{ fontWeight: 400, color: "#888", marginLeft: 8, fontSize: 12 }}>
-                (OS 기본값: {detectOsLanguage() === "ko" ? "한국어" : "English"})
+                ({t('settings.language.os')} {detectOsLanguage() === "ko" ? "한국어" : "English"})
               </span>
             </label>
             <select
@@ -378,24 +374,24 @@ export default function Settings() {
                 background: "#fff",
               }}
             >
-              <option value="ko">한국어 — AI가 한국어 프롬프트로 콘텐츠 생성</option>
-              <option value="en">English — AI uses English prompts for content</option>
+              <option value="ko">{t('settings.language.ko')}</option>
+              <option value="en">{t('settings.language.en')}</option>
             </select>
             <p style={{ margin: "6px 0 0", fontSize: 12, color: "#888" }}>
-              영어 프롬프트는 일반적으로 더 풍부한 AI 응답을 생성합니다.
+              {t('settings.language.hint')}
             </p>
           </div>
 
           <hr style={{ border: "none", borderTop: "1px solid #f0f0f0", margin: "20px 0" }} />
 
-          <h4 style={{ margin: "0 0 12px", fontSize: 14, color: "#333" }}>OpenAI 호환 서버</h4>
+          <h4 style={{ margin: "0 0 12px", fontSize: 14, color: "#333" }}>{t('settings.ollama.section')}</h4>
           <p style={{ margin: "0 0 12px", fontSize: 12, color: "#888" }}>
-            Ollama, GPUStack, LM Studio 등 OpenAI 호환 API를 사용합니다. OpenAI API 키가 설정된 경우 OpenAI가 우선합니다.
+            {t('settings.ollama.hint')}
           </p>
 
           <div style={{ marginBottom: 16 }}>
             <label htmlFor="ollama-endpoint" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              서버 엔드포인트
+              {t('settings.ollama.endpoint.label')}
             </label>
             <input
               id="ollama-endpoint"
@@ -417,14 +413,14 @@ export default function Settings() {
 
           <div style={{ marginBottom: 16 }}>
             <label htmlFor="ollama-api-key" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              API 키 (선택)
+              {t('settings.ollama.apikey.label')}
             </label>
             <input
               id="ollama-api-key"
               type="password"
               value={ollamaApiKey}
               onChange={(e) => setOllamaApiKey(e.target.value)}
-              placeholder="인증이 필요한 경우 입력 (예: GPUStack, LM Studio)"
+              placeholder={t('settings.ollama.apikey.placeholder')}
               style={{
                 width: "100%",
                 padding: "8px 12px",
@@ -439,14 +435,14 @@ export default function Settings() {
 
           <div style={{ marginBottom: 16 }}>
             <label htmlFor="ollama-chat-model" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              채팅 모델
+              {t('settings.ollama.chat.label')}
             </label>
             <input
               id="ollama-chat-model"
               type="text"
               value={ollamaModel}
               onChange={(e) => setOllamaModel(e.target.value)}
-              placeholder="예: llama3, mistral, gemma3 (비워두면 비활성화)"
+              placeholder={t('settings.ollama.chat.placeholder')}
               style={{
                 width: "100%",
                 padding: "8px 12px",
@@ -461,14 +457,14 @@ export default function Settings() {
 
           <div style={{ marginBottom: 16 }}>
             <label htmlFor="ollama-embedding-model" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              임베딩 모델
+              {t('settings.ollama.embedding.label')}
             </label>
             <input
               id="ollama-embedding-model"
               type="text"
               value={ollamaEmbeddingModel}
               onChange={(e) => { setOllamaEmbeddingModel(e.target.value); setDetectError(null); }}
-              placeholder="예: nomic-embed-text, mxbai-embed-large (비워두면 비활성화)"
+              placeholder={t('settings.ollama.embedding.placeholder')}
               style={{
                 width: "100%",
                 padding: "8px 12px",
@@ -480,13 +476,13 @@ export default function Settings() {
               }}
             />
             <p style={{ margin: "6px 0 0", fontSize: 12, color: "#888" }}>
-              API 키가 없을 때 임베딩(RAG 검색·토픽 유사도)에 사용됩니다.
+              {t('settings.ollama.embedding.hint')}
             </p>
           </div>
 
           <div style={{ marginBottom: 20 }}>
             <label htmlFor="embedding-dim" style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#555", marginBottom: 6 }}>
-              임베딩 차원 수
+              {t('settings.dim.label')}
             </label>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               <input
@@ -515,7 +511,7 @@ export default function Settings() {
                     const dim = await detectOllamaEmbeddingDimension(ollamaEndpoint, ollamaEmbeddingModel);
                     setEmbeddingDimension(dim);
                   } catch (e) {
-                    setDetectError(e instanceof Error ? e.message : "차원 감지 실패");
+                    setDetectError(e instanceof Error ? e.message : t('settings.dim.detecting'));
                   } finally {
                     setDetectingDim(false);
                   }
@@ -531,11 +527,11 @@ export default function Settings() {
                   whiteSpace: "nowrap",
                 }}
               >
-                {detectingDim ? "감지 중..." : "자동 감지"}
+                {detectingDim ? t('settings.dim.detecting') : t('settings.dim.detect')}
               </button>
             </div>
             <p style={{ margin: "6px 0 0", fontSize: 12, color: "#888" }}>
-              OpenAI text-embedding-3-small: 1536 / nomic-embed-text: 768 / mxbai-embed-large: 1024
+              {t('settings.dim.hint')}
             </p>
             {detectError && (
               <p style={{ margin: "4px 0 0", fontSize: 12, color: "#dc3545" }}>
@@ -559,12 +555,12 @@ export default function Settings() {
               cursor: saving ? "not-allowed" : "pointer",
             }}
           >
-            {saving ? "저장 중..." : "저장"}
+            {saving ? t('settings.saving') : t('settings.save')}
           </button>
 
           {saved && (
             <span role="status" style={{ marginLeft: 12, fontSize: 13, color: "#28a745" }}>
-              ✓ 저장되었습니다 (즉시 적용됨)
+              {t('settings.saved')}
             </span>
           )}
           {saveError && (

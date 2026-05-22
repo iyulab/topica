@@ -157,6 +157,12 @@ jobs:
             libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
             libfuse2 \
             liblttng-ust-dev
+          # .NET runtime needs liblttng-ust.so.0, Ubuntu 22.04 only has .so.1
+          LTTNG1=$(find /usr/lib -name "liblttng-ust.so.1" 2>/dev/null | head -1)
+          if [ -n "$LTTNG1" ]; then
+            sudo ln -sf "$LTTNG1" "$(dirname $LTTNG1)/liblttng-ust.so.0"
+            echo "Symlink created: $(dirname $LTTNG1)/liblttng-ust.so.0 -> $LTTNG1"
+          fi
 
       - run: pnpm install
 
@@ -176,7 +182,29 @@ jobs:
           rm -rf backend-pub
 
       - name: Build Tauri (Linux AppImage)
+        id: tauri_build
+        continue-on-error: true
         run: pnpm tauri build --bundles appimage
+
+      - name: Debug linuxdeploy on failure
+        if: steps.tauri_build.outcome == 'failure'
+        run: |
+          APPDIR="src-tauri/target/release/bundle/appimage/topica.AppDir"
+          LD="$(find ~/.cache/tauri -name 'linuxdeploy-x86_64.AppImage' 2>/dev/null | head -1)"
+          echo "=== lttng libs ==="
+          find /usr/lib -name "liblttng*" 2>/dev/null
+          echo "=== linuxdeploy: $LD ==="
+          echo "=== AppDir exists: $(test -d "$APPDIR" && echo yes || echo no) ==="
+          if [ -n "$LD" ] && [ -d "$APPDIR" ]; then
+            PLUGIN_DIR="$(dirname "$LD")"
+            APPIMAGE_EXTRACT_AND_RUN=1 PATH="$PLUGIN_DIR:$PATH" "$LD" \
+              --appimage-extract-and-run --verbosity 3 \
+              --appdir "$APPDIR" --plugin gtk --output appimage 2>&1 || echo "Exit: $?"
+          fi
+
+      - name: Fail on build error
+        if: steps.tauri_build.outcome == 'failure'
+        run: exit 1
 
       - name: Upload AppImage and save sig
         env:

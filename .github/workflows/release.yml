@@ -73,13 +73,15 @@ jobs:
           releaseName: 'Topica ${{ github.ref_name }}'
           releaseDraft: true
           prerelease: false
+          includeUpdaterJson: false
           args: --bundles nsis
 
       - name: Save Windows sig artifact
         shell: pwsh
         run: |
-          $f = Get-ChildItem src-tauri/target/release/bundle/nsis -Filter "*.nsis.zip.sig" |
+          $f = Get-ChildItem src-tauri/target/release/bundle -Recurse -Filter "*.nsis.zip.sig" |
                Select-Object -First 1
+          if (-not $f) { throw "*.nsis.zip.sig not found in src-tauri/target/release/bundle" }
           Copy-Item $f.FullName windows.sig
 
       - uses: actions/upload-artifact@v4
@@ -95,6 +97,8 @@ jobs:
     runs-on: ubuntu-22.04
     permissions:
       contents: write
+    env:
+      APPIMAGE_EXTRACT_AND_RUN: '1'
 
     steps:
       - uses: actions/checkout@v4
@@ -147,16 +151,20 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPIMAGE_EXTRACT_AND_RUN: '1'
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Topica ${{ github.ref_name }}'
           releaseDraft: true
           prerelease: false
+          includeUpdaterJson: false
           args: --bundles appimage
 
       - name: Save Linux sig artifact
         run: |
-          cp src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz.sig linux.sig
+          f=$(find src-tauri/target/release/bundle -name "*.AppImage.tar.gz.sig" | head -1)
+          if [ -z "$f" ]; then echo "sig not found"; exit 1; fi
+          cp "$f" linux.sig
 
       - uses: actions/upload-artifact@v4
         with:

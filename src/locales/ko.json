@@ -275,5 +275,10 @@
   "settings.model.lowcost": "권장, 저비용",
   "settings.model.highperf": "고성능",
   "settings.model.legacy": "구형",
-  "settings.language.ko.name": "한국어"
+  "settings.language.ko.name": "한국어",
+
+  "update.available": "새 버전 {{version}} 출시",
+  "update.install": "설치 후 재시작",
+  "update.downloading": "다운로드 중... {{progress}}%",
+  "update.ready": "설치 완료. 재시작 중..."
 }

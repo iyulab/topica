@@ -4,6 +4,7 @@ import { router } from "./app/Router";
 import { checkHealth } from "./lib/api";
 import { topicaWs, type WsMessage } from "./lib/ws";
 import { useAppStore, useQueueStore } from "./lib/store";
+import { checkForUpdates } from "./lib/updater";
 
 export default function App() {
   const { setConnected } = useAppStore();
@@ -34,6 +35,11 @@ export default function App() {
       setConnected(false);
     };
   }, [setConnected]);
+
+  useEffect(() => {
+    const timer = setTimeout(checkForUpdates, 5000);
+    return () => clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     return topicaWs.on((msg: WsMessage) => {

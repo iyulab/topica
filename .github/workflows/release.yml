@@ -5,7 +5,15 @@ on:
     tags:
       - 'v*.*.*'
 
+# 같은 태그로 중복 실행 시 이전 것 취소
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  # ─────────────────────────────────────────
+  # Windows (NSIS only)
+  # ─────────────────────────────────────────
   release-windows:
     runs-on: windows-latest
     permissions:
@@ -14,137 +22,72 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust build
-        uses: swatinem/rust-cache@v2
+      - uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
-      - name: Install frontend dependencies
-        run: pnpm install
+      - run: pnpm install
 
-      - name: Restore .NET packages
-        run: dotnet restore backend/Topica.Api/Topica.Api.csproj
-
-      - name: Build .NET sidecar (Windows x64)
+      - name: Build .NET sidecar (Windows x64, self-contained)
         shell: pwsh
         run: |
           dotnet publish backend/Topica.Api/Topica.Api.csproj `
-            -c Release -r win-x64 --self-contained false `
-            -o backend-pub --no-restore
+            -c Release -r win-x64 --self-contained true `
+            -o backend-pub
           New-Item -ItemType Directory -Force -Path src-tauri/binaries | Out-Null
           Copy-Item backend-pub/Topica.Api.exe `
             src-tauri/binaries/Topica.Api-x86_64-pc-windows-msvc.exe
-          Get-ChildItem backend-pub -Filter *.dll |
-            Copy-Item -Destination src-tauri/binaries/
+          Get-ChildItem backend-pub -Include *.dll,*.dat -Recurse |
+            ForEach-Object { Copy-Item $_.FullName -Destination src-tauri/binaries/ -Force }
           Get-ChildItem backend-pub -Filter *.json |
             Where-Object { $_.Name -ne 'appsettings.Development.json' } |
-            Copy-Item -Destination src-tauri/binaries/
+            ForEach-Object { Copy-Item $_.FullName -Destination src-tauri/binaries/ -Force }
           Remove-Item -Recurse -Force backend-pub
 
-      - name: Build Tauri installer (Windows)
+      - name: Build Tauri app (Windows, NSIS)
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Topica ${{ github.ref_name }}'
-          releaseBody: |
-            ## 설치 방법
-
-            **Windows**: NSIS 설치 파일(`.exe`) 또는 MSI 파일 다운로드 후 설치
-            > 설치 전 [.NET 10 Runtime](https://dotnet.microsoft.com/download/dotnet/10.0)이 필요합니다.
-
-            **macOS**: `.dmg` 파일 다운로드 후 설치
-            > .NET 10 Runtime 필요
-
-            **Linux**: `.AppImage` 또는 `.deb` 파일 다운로드 후 설치
-            > .NET 10 Runtime 필요
           releaseDraft: true
           prerelease: false
+          args: --bundles nsis
 
-  release-macos:
-    runs-on: macos-latest
-    permissions:
-      contents: write
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '10.0.x'
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
-
-      - name: Cache Rust build
-        uses: swatinem/rust-cache@v2
-        with:
-          workspaces: './src-tauri -> target'
-
-      - name: Install frontend dependencies
-        run: pnpm install
-
-      - name: Restore .NET packages
-        run: dotnet restore backend/Topica.Api/Topica.Api.csproj
-
-      - name: Build .NET sidecar (macOS arm64)
+      - name: Save Windows sig artifact
+        shell: pwsh
         run: |
-          dotnet publish backend/Topica.Api/Topica.Api.csproj \
-            -c Release -r osx-arm64 --self-contained false \
-            -o backend-pub --no-restore
-          mkdir -p src-tauri/binaries
-          cp backend-pub/Topica.Api \
-            src-tauri/binaries/Topica.Api-aarch64-apple-darwin
-          cp backend-pub/*.dll src-tauri/binaries/ 2>/dev/null || true
-          cp backend-pub/*.json src-tauri/binaries/ 2>/dev/null || true
-          rm -f src-tauri/binaries/appsettings.Development.json
-          rm -rf backend-pub
+          $f = Get-ChildItem src-tauri/target/release/bundle/nsis -Filter "*.nsis.zip.sig" |
+               Select-Object -First 1
+          Copy-Item $f.FullName windows.sig
 
-      - name: Build Tauri app (macOS)
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/upload-artifact@v4
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Topica ${{ github.ref_name }}'
-          releaseDraft: true
-          prerelease: false
-          args: --target aarch64-apple-darwin
+          name: windows-sig
+          path: windows.sig
+          retention-days: 1
 
+  # ─────────────────────────────────────────
+  # Linux (AppImage only)
+  # ─────────────────────────────────────────
   release-linux:
     runs-on: ubuntu-22.04
     permissions:
@@ -153,27 +96,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 9
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust build
-        uses: swatinem/rust-cache@v2
+      - uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
 
@@ -181,37 +119,121 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            libappindicator3-dev \
-            librsvg2-dev \
-            patchelf
+            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
 
-      - name: Install frontend dependencies
-        run: pnpm install
+      - run: pnpm install
 
-      - name: Restore .NET packages
-        run: dotnet restore backend/Topica.Api/Topica.Api.csproj
-
-      - name: Build .NET sidecar (Linux x64)
+      - name: Build .NET sidecar (Linux x64, self-contained)
         run: |
           dotnet publish backend/Topica.Api/Topica.Api.csproj \
-            -c Release -r linux-x64 --self-contained false \
-            -o backend-pub --no-restore
+            -c Release -r linux-x64 --self-contained true \
+            -o backend-pub
           mkdir -p src-tauri/binaries
           cp backend-pub/Topica.Api \
             src-tauri/binaries/Topica.Api-x86_64-unknown-linux-gnu
-          cp backend-pub/*.dll src-tauri/binaries/ 2>/dev/null || true
-          cp backend-pub/*.json src-tauri/binaries/ 2>/dev/null || true
-          cp backend-pub/*.so src-tauri/binaries/ 2>/dev/null || true
-          rm -f src-tauri/binaries/appsettings.Development.json
+          find backend-pub -maxdepth 1 \( -name "*.dll" -o -name "*.so" -o -name "*.dat" \) \
+            -exec cp {} src-tauri/binaries/ \;
+          find backend-pub -maxdepth 1 -name "*.json" \
+            ! -name "appsettings.Development.json" \
+            -exec cp {} src-tauri/binaries/ \;
           rm -rf backend-pub
 
-      - name: Build Tauri app (Linux)
+      - name: Build Tauri app (Linux, AppImage)
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'Topica ${{ github.ref_name }}'
           releaseDraft: true
           prerelease: false
+          args: --bundles appimage
+
+      - name: Save Linux sig artifact
+        run: |
+          cp src-tauri/target/release/bundle/appimage/*.AppImage.tar.gz.sig linux.sig
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-sig
+          path: linux.sig
+          retention-days: 1
+
+  # ─────────────────────────────────────────
+  # Publish: latest.json 생성 → 릴리즈 공개 → 오래된 릴리즈 정리
+  # ─────────────────────────────────────────
+  publish:
+    needs: [release-windows, release-linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TAG: ${{ github.ref_name }}
+      REPO: ${{ github.repository }}
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-sig
+          path: sigs
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-sig
+          path: sigs
+
+      - name: Generate latest.json
+        run: |
+          cat > gen_latest.py << 'PYEOF'
+          import json, os
+          from datetime import datetime, timezone
+
+          tag  = os.environ['TAG']
+          repo = os.environ['REPO']
+          ver  = tag.lstrip('v')
+          pub_date = datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+          with open('sigs/windows.sig') as f:
+              win_sig = f.read().strip()
+          with open('sigs/linux.sig') as f:
+              lin_sig = f.read().strip()
+
+          data = {
+              "version": ver,
+              "notes": f"Topica {tag} 릴리즈",
+              "pub_date": pub_date,
+              "platforms": {
+                  "windows-x86_64": {
+                      "signature": win_sig,
+                      "url": f"https://github.com/{repo}/releases/download/{tag}/topica_{ver}_x64-setup.nsis.zip"
+                  },
+                  "linux-x86_64": {
+                      "signature": lin_sig,
+                      "url": f"https://github.com/{repo}/releases/download/{tag}/topica_{ver}_amd64.AppImage.tar.gz"
+                  }
+              }
+          }
+
+          with open('latest.json', 'w', encoding='utf-8') as f:
+              json.dump(data, f, indent=2, ensure_ascii=False)
+
+          print(f"Generated latest.json for {tag} (version {ver})")
+          PYEOF
+          python3 gen_latest.py
+
+      - name: Upload latest.json and publish release
+        run: |
+          gh release upload "$TAG" latest.json --repo "$REPO" --clobber
+          gh release edit "$TAG" --draft=false --repo "$REPO"
+
+      - name: Cleanup old published releases (keep 5 most recent)
+        run: |
+          gh release list --repo "$REPO" --limit 100 --json tagName,isDraft \
+            --jq '[.[] | select(.isDraft == false)] | .[5:] | .[].tagName' \
+            | while read -r OLD_TAG; do
+                echo "Deleting old release: $OLD_TAG"
+                gh release delete "$OLD_TAG" --repo "$REPO" --yes --cleanup-tag || true
+              done

@@ -1,8 +1,10 @@
+import { useState, useEffect } from "react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { BookOpen, Network, BarChart2, Settings, type LucideIcon } from "lucide-react";
 import { useAppStore, useQueueStore, useLearningQueueStore } from "../lib/store";
 import NotificationToast from "../components/NotificationToast";
+import { onUpdateState, installUpdate, type UpdateInfo } from "../lib/updater";
 
 export default function Layout() {
   const { t } = useTranslation();
@@ -11,6 +13,11 @@ export default function Layout() {
   const { items: queueItems, removeItem } = useLearningQueueStore();
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo>({ status: 'idle' });
+
+  useEffect(() => {
+    return onUpdateState(setUpdateInfo);
+  }, []);
 
   return (
     <div style={{ display: "flex", height: "100vh", fontFamily: "system-ui, sans-serif" }}>
@@ -69,6 +76,34 @@ export default function Layout() {
                 {t('nav.queue.more', { count: queueItems.length - 4 })}
               </div>
             )}
+          </div>
+        )}
+
+        {updateInfo.status === 'available' && (
+          <div style={{ margin: "8px 0", borderTop: "1px solid #2d2d4e", padding: "10px 16px" }}>
+            <div style={{ fontSize: 11, color: "#ffd54f", marginBottom: 6 }}>
+              🔔 {t('update.available', { version: updateInfo.version })}
+            </div>
+            <button
+              onClick={installUpdate}
+              style={{
+                background: "#6c63ff", border: "none", color: "#fff",
+                borderRadius: 4, padding: "4px 10px", fontSize: 11,
+                cursor: "pointer", width: "100%",
+              }}
+            >
+              {t('update.install')}
+            </button>
+          </div>
+        )}
+        {updateInfo.status === 'downloading' && (
+          <div style={{ margin: "8px 0", borderTop: "1px solid #2d2d4e", padding: "10px 16px", fontSize: 11, color: "#90caf9" }}>
+            ⬇️ {t('update.downloading', { progress: updateInfo.progress ?? 0 })}
+          </div>
+        )}
+        {updateInfo.status === 'ready' && (
+          <div style={{ margin: "8px 0", borderTop: "1px solid #2d2d4e", padding: "10px 16px", fontSize: 11, color: "#4caf50" }}>
+            ✅ {t('update.ready')}
           </div>
         )}
 

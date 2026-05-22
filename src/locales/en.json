@@ -275,5 +275,10 @@
   "settings.model.lowcost": "Recommended, low cost",
   "settings.model.highperf": "High performance",
   "settings.model.legacy": "Legacy",
-  "settings.language.ko.name": "Korean"
+  "settings.language.ko.name": "Korean",
+
+  "update.available": "Version {{version}} available",
+  "update.install": "Install & Restart",
+  "update.downloading": "Downloading... {{progress}}%",
+  "update.ready": "Update installed. Restarting..."
 }

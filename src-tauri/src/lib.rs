@@ -26,6 +26,8 @@ pub fn run() {
     BACKEND_PORT.set(port).expect("Port already set");
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_shell::init())
         .setup(move |app| {

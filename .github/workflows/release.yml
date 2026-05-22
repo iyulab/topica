@@ -191,10 +191,31 @@ jobs:
           rm -rf backend-pub
 
       - name: Build Tauri (Linux AppImage)
+        id: tauri_build
+        continue-on-error: true
         env:
           RUST_LOG: tauri_bundler=debug
           TMPDIR: /home/runner/work/tmp
         run: pnpm tauri build --bundles appimage
+
+      - name: Debug - manually run linuxdeploy with full output
+        if: steps.tauri_build.outcome == 'failure'
+        run: |
+          APPDIR="src-tauri/target/release/bundle/appimage/topica.AppDir"
+          LD="$(find ~/.local/share/tauri -name 'linuxdeploy-x86_64.AppImage' 2>/dev/null | head -1)"
+          echo "=== linuxdeploy path: $LD ==="
+          echo "=== AppDir exists: $(test -d $APPDIR && echo yes || echo no) ==="
+          ls "$APPDIR" 2>/dev/null || true
+          if [ -n "$LD" ] && [ -d "$APPDIR" ]; then
+            echo "=== Running linuxdeploy manually (full output) ==="
+            APPIMAGE_EXTRACT_AND_RUN=1 TMPDIR=/home/runner/work/tmp "$LD" \
+              --appimage-extract-and-run --verbosity 3 \
+              --appdir "$APPDIR" --plugin gtk --output appimage 2>&1 || true
+          fi
+
+      - name: Fail on build error
+        if: steps.tauri_build.outcome == 'failure'
+        run: exit 1
 
       - name: Upload AppImage and save sig
         env:

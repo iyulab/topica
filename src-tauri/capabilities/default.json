@@ -9,6 +9,6 @@
     "shell:allow-spawn",
     "notification:default",
     "updater:default",
-    "process:allow-relaunch"
+    "process:allow-restart"
   ]
 }

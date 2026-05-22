@@ -213,16 +213,12 @@ jobs:
           tag="${{ github.ref_name }}"
           repo="${{ github.repository }}"
 
-          echo "=== Bundle directory contents ==="
-          find src-tauri/target/release/bundle -type f | sort
-
+          # Tauri v2 AppImage: *.AppImage + *.AppImage.sig (NOT .tar.gz.sig)
           appimage=$(find src-tauri/target/release/bundle -name "*.AppImage" ! -name "*.tar.gz" | head -1)
-          tar_gz=$(find src-tauri/target/release/bundle -name "*.AppImage.tar.gz" | head -1)
-          sig=$(find src-tauri/target/release/bundle -name "*.AppImage.tar.gz.sig" | head -1)
+          sig=$(find src-tauri/target/release/bundle -name "*.AppImage.sig" ! -name "*.tar.gz.sig" | head -1)
 
           [ -n "$appimage" ] && gh release upload "$tag" "$appimage" --repo "$repo" --clobber
-          [ -n "$tar_gz"  ] && gh release upload "$tag" "$tar_gz"  --repo "$repo" --clobber
-          if [ -z "$sig" ]; then echo "ERROR: *.AppImage.tar.gz.sig not found"; exit 1; fi
+          if [ -z "$sig" ]; then echo "ERROR: *.AppImage.sig not found"; exit 1; fi
           cp "$sig" linux.sig
           echo "sig saved: $(head -1 linux.sig)"
 
@@ -283,7 +279,7 @@ jobs:
                   },
                   "linux-x86_64": {
                       "signature": lin_sig,
-                      "url": f"https://github.com/{repo}/releases/download/{tag}/topica_{ver}_amd64.AppImage.tar.gz"
+                      "url": f"https://github.com/{repo}/releases/download/{tag}/topica_{ver}_amd64.AppImage"
                   }
               }
           }

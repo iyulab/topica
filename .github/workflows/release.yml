@@ -202,15 +202,20 @@ jobs:
         if: steps.tauri_build.outcome == 'failure'
         run: |
           APPDIR="src-tauri/target/release/bundle/appimage/topica.AppDir"
-          LD="$(find ~/.local/share/tauri -name 'linuxdeploy-x86_64.AppImage' 2>/dev/null | head -1)"
+          echo "=== Searching for linuxdeploy ==="
+          find /home/runner/work/tmp ~/.local ~/.cache /tmp -name 'linuxdeploy-x86_64.AppImage' 2>/dev/null | head -5
+          LD="$(find /home/runner/work/tmp ~/.local ~/.cache /tmp -name 'linuxdeploy-x86_64.AppImage' 2>/dev/null | head -1)"
           echo "=== linuxdeploy path: $LD ==="
-          echo "=== AppDir exists: $(test -d $APPDIR && echo yes || echo no) ==="
+          echo "=== AppDir exists: $(test -d "$APPDIR" && echo yes || echo no) ==="
           ls "$APPDIR" 2>/dev/null || true
           if [ -n "$LD" ] && [ -d "$APPDIR" ]; then
             echo "=== Running linuxdeploy manually (full output) ==="
-            APPIMAGE_EXTRACT_AND_RUN=1 TMPDIR=/home/runner/work/tmp "$LD" \
+            PLUGIN_DIR="$(dirname "$LD")"
+            APPIMAGE_EXTRACT_AND_RUN=1 TMPDIR=/home/runner/work/tmp PATH="$PLUGIN_DIR:$PATH" "$LD" \
               --appimage-extract-and-run --verbosity 3 \
-              --appdir "$APPDIR" --plugin gtk --output appimage 2>&1 || true
+              --appdir "$APPDIR" --plugin gtk --output appimage 2>&1 || echo "Exit: $?"
+          else
+            echo "Cannot run: LD=$LD, APPDIR=$(test -d "$APPDIR" && echo exists || echo missing)"
           fi
 
       - name: Fail on build error

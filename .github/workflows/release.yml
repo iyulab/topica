@@ -15,12 +15,35 @@ concurrency:
 
 jobs:
   # ─────────────────────────────────────────
+  # 드래프트 릴리즈 사전 생성 (두 빌드 잡이 업로드 대상으로 사용)
+  # ─────────────────────────────────────────
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create draft release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --title "Topica ${{ github.ref_name }}" \
+            --notes "" \
+            --draft \
+            2>/dev/null || echo "Release already exists, continuing"
+
+  # ─────────────────────────────────────────
   # Windows (NSIS only)
   # ─────────────────────────────────────────
   release-windows:
+    needs: create-release
     runs-on: windows-latest
     permissions:
       contents: write
+    env:
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
@@ -62,27 +85,30 @@ jobs:
             ForEach-Object { Copy-Item $_.FullName -Destination src-tauri/binaries/ -Force }
           Remove-Item -Recurse -Force backend-pub
 
-      - name: Build Tauri app (Windows, NSIS)
-        uses: tauri-apps/tauri-action@v0
+      - name: Build Tauri (Windows NSIS)
+        shell: pwsh
+        run: pnpm tauri build --bundles nsis
+
+      - name: Upload installer and save sig
+        shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Topica ${{ github.ref_name }}'
-          releaseDraft: true
-          prerelease: false
-          includeUpdaterJson: false
-          args: --bundles nsis
-
-      - name: Save Windows sig artifact
-        shell: pwsh
         run: |
-          $f = Get-ChildItem src-tauri/target/release/bundle -Recurse -Filter "*.nsis.zip.sig" |
-               Select-Object -First 1
-          if (-not $f) { throw "*.nsis.zip.sig not found in src-tauri/target/release/bundle" }
-          Copy-Item $f.FullName windows.sig
+          $tag  = "${{ github.ref_name }}"
+          $repo = "${{ github.repository }}"
+
+          Write-Host "=== Bundle directory contents ==="
+          Get-ChildItem src-tauri/target/release/bundle -Recurse | Select-Object FullName
+
+          $exe = Get-ChildItem src-tauri/target/release/bundle -Recurse -Filter "*.exe" | Select-Object -First 1
+          $zip = Get-ChildItem src-tauri/target/release/bundle -Recurse -Filter "*.nsis.zip" | Select-Object -First 1
+          $sig = Get-ChildItem src-tauri/target/release/bundle -Recurse -Filter "*.nsis.zip.sig" | Select-Object -First 1
+
+          if ($exe) { gh release upload $tag $exe.FullName --repo $repo --clobber }
+          if ($zip) { gh release upload $tag $zip.FullName --repo $repo --clobber }
+          if (-not $sig) { throw "*.nsis.zip.sig not found — TAURI_SIGNING_PRIVATE_KEY 확인 필요" }
+          Copy-Item $sig.FullName windows.sig
+          Write-Host "sig saved: $(Get-Content windows.sig | Select-Object -First 1)"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -94,11 +120,14 @@ jobs:
   # Linux (AppImage only)
   # ─────────────────────────────────────────
   release-linux:
+    needs: create-release
     runs-on: ubuntu-22.04
     permissions:
       contents: write
     env:
       APPIMAGE_EXTRACT_AND_RUN: '1'
+      TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+      TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
@@ -126,7 +155,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+            libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
+            libfuse2
 
       - run: pnpm install
 
@@ -145,26 +175,28 @@ jobs:
             -exec cp {} src-tauri/binaries/ \;
           rm -rf backend-pub
 
-      - name: Build Tauri app (Linux, AppImage)
-        uses: tauri-apps/tauri-action@v0
+      - name: Build Tauri (Linux AppImage)
+        run: pnpm tauri build --bundles appimage
+
+      - name: Upload AppImage and save sig
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          APPIMAGE_EXTRACT_AND_RUN: '1'
-        with:
-          tagName: ${{ github.ref_name }}
-          releaseName: 'Topica ${{ github.ref_name }}'
-          releaseDraft: true
-          prerelease: false
-          includeUpdaterJson: false
-          args: --bundles appimage
-
-      - name: Save Linux sig artifact
         run: |
-          f=$(find src-tauri/target/release/bundle -name "*.AppImage.tar.gz.sig" | head -1)
-          if [ -z "$f" ]; then echo "sig not found"; exit 1; fi
-          cp "$f" linux.sig
+          tag="${{ github.ref_name }}"
+          repo="${{ github.repository }}"
+
+          echo "=== Bundle directory contents ==="
+          find src-tauri/target/release/bundle -type f | sort
+
+          appimage=$(find src-tauri/target/release/bundle -name "*.AppImage" ! -name "*.tar.gz" | head -1)
+          tar_gz=$(find src-tauri/target/release/bundle -name "*.AppImage.tar.gz" | head -1)
+          sig=$(find src-tauri/target/release/bundle -name "*.AppImage.tar.gz.sig" | head -1)
+
+          [ -n "$appimage" ] && gh release upload "$tag" "$appimage" --repo "$repo" --clobber
+          [ -n "$tar_gz"  ] && gh release upload "$tag" "$tar_gz"  --repo "$repo" --clobber
+          if [ -z "$sig" ]; then echo "ERROR: *.AppImage.tar.gz.sig not found"; exit 1; fi
+          cp "$sig" linux.sig
+          echo "sig saved: $(head -1 linux.sig)"
 
       - uses: actions/upload-artifact@v4
         with:

@@ -155,23 +155,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
-            libfuse2 file wget
-
-      - name: Diagnose AppImage environment
-        run: |
-          echo "=== /tmp info ==="
-          df -h /tmp && mount | grep tmp || true
-          echo "=== fuse ==="
-          ls /dev/fuse 2>/dev/null || echo "/dev/fuse not present"
-          echo "=== linuxdeploy test ==="
-          mkdir -p /home/runner/work/tmp
-          wget -q -O /tmp/linuxdeploy "https://github.com/tauri-apps/binary-releases/releases/download/linuxdeploy/linuxdeploy-x86_64.AppImage"
-          chmod +x /tmp/linuxdeploy
-          TMPDIR=/home/runner/work/tmp APPIMAGE_EXTRACT_AND_RUN=1 /tmp/linuxdeploy --version 2>&1 || echo "linuxdeploy failed"
-          echo "=== linuxdeploy-plugin-appimage test ==="
-          wget -q -O /tmp/ld-plugin-appimage "https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage"
-          chmod +x /tmp/ld-plugin-appimage
-          TMPDIR=/home/runner/work/tmp APPIMAGE_EXTRACT_AND_RUN=1 /tmp/ld-plugin-appimage --version 2>&1 || echo "plugin-appimage failed"
+            libfuse2 \
+            liblttng-ust-dev
 
       - run: pnpm install
 
@@ -191,36 +176,7 @@ jobs:
           rm -rf backend-pub
 
       - name: Build Tauri (Linux AppImage)
-        id: tauri_build
-        continue-on-error: true
-        env:
-          RUST_LOG: tauri_bundler=debug
-          TMPDIR: /home/runner/work/tmp
         run: pnpm tauri build --bundles appimage
-
-      - name: Debug - manually run linuxdeploy with full output
-        if: steps.tauri_build.outcome == 'failure'
-        run: |
-          APPDIR="src-tauri/target/release/bundle/appimage/topica.AppDir"
-          echo "=== Searching for linuxdeploy ==="
-          find /home/runner/work/tmp ~/.local ~/.cache /tmp -name 'linuxdeploy-x86_64.AppImage' 2>/dev/null | head -5
-          LD="$(find /home/runner/work/tmp ~/.local ~/.cache /tmp -name 'linuxdeploy-x86_64.AppImage' 2>/dev/null | head -1)"
-          echo "=== linuxdeploy path: $LD ==="
-          echo "=== AppDir exists: $(test -d "$APPDIR" && echo yes || echo no) ==="
-          ls "$APPDIR" 2>/dev/null || true
-          if [ -n "$LD" ] && [ -d "$APPDIR" ]; then
-            echo "=== Running linuxdeploy manually (full output) ==="
-            PLUGIN_DIR="$(dirname "$LD")"
-            APPIMAGE_EXTRACT_AND_RUN=1 TMPDIR=/home/runner/work/tmp PATH="$PLUGIN_DIR:$PATH" "$LD" \
-              --appimage-extract-and-run --verbosity 3 \
-              --appdir "$APPDIR" --plugin gtk --output appimage 2>&1 || echo "Exit: $?"
-          else
-            echo "Cannot run: LD=$LD, APPDIR=$(test -d "$APPDIR" && echo exists || echo missing)"
-          fi
-
-      - name: Fail on build error
-        if: steps.tauri_build.outcome == 'failure'
-        run: exit 1
 
       - name: Upload AppImage and save sig
         env:

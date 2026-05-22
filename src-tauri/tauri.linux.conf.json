@@ -1,0 +1,9 @@
+{
+  "bundle": {
+    "resources": {
+      "binaries/*.dll": ".",
+      "binaries/*.so": ".",
+      "binaries/*.json": "."
+    }
+  }
+}

@@ -32,14 +32,7 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/Topica.Api"],
-    "resources": {
-      "binaries/*.dll": ".",
-      "binaries/*.so": ".",
-      "binaries/*.dylib": ".",
-      "binaries/*.json": ".",
-      "binaries/*.dat": "."
-    }
+    "externalBin": ["binaries/Topica.Api"]
   },
   "plugins": {
     "updater": {
